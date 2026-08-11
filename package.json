@@ -1,0 +1,27 @@
+{
+  "name": "pg-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PG and hostel marketplace + management platform for Hyderabad",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yaml,yml}\"",
+    "db:up": "docker compose -f infrastructure/docker/docker-compose.dev.yml up -d",
+    "db:down": "docker compose -f infrastructure/docker/docker-compose.dev.yml down",
+    "db:logs": "docker compose -f infrastructure/docker/docker-compose.dev.yml logs -f postgres"
+  },
+  "devDependencies": {
+    "prettier": "3.4.2",
+    "turbo": "2.3.3",
+    "typescript": "5.7.2"
+  }
+}

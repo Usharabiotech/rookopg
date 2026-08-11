@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnp.*
+.yarn/*
+
+# Environment — never commit real secrets. Commit .env.example only.
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Test / coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Flutter / Dart
+apps/mobile/.dart_tool/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/.packages
+apps/mobile/build/
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/key.properties
+*.jks
+*.keystore
+!apps/mobile/android/app/debug.keystore
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local scratch
+tmp/
+.cache/

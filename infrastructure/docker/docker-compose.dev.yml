@@ -1,0 +1,24 @@
+# Local development dependencies only. Not used in staging or production.
+name: pgplatform-dev
+
+services:
+  postgres:
+    image: postgres:16.6-alpine
+    container_name: pgplatform-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pgplatform
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: pgplatform
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgplatform-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pgplatform -d pgplatform']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgplatform-pgdata:
