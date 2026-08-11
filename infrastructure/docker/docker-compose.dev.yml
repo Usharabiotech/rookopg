@@ -10,8 +10,10 @@ services:
       POSTGRES_USER: pgplatform
       POSTGRES_PASSWORD: localdev
       POSTGRES_DB: pgplatform
+    # Host port 55432 — 5432/5433/5434 are used by other projects on this
+    # machine. Container-internal port stays 5432.
     ports:
-      - '5432:5432'
+      - '55432:5432'
     volumes:
       - pgplatform-pgdata:/var/lib/postgresql/data
     healthcheck:

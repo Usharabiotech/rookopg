@@ -1,0 +1,985 @@
+// PG Platform — database schema
+//
+// Design and reasoning: docs/04_Database_Design.md
+// Founder decisions:    docs/02_Open_Questions.md (Part 0)
+//
+// Conventions:
+//   - Money is ALWAYS integer paise. Never Float, never rupees.
+//   - Dates that mean a calendar day use @db.Date. Instants use timestamptz.
+//   - `orgId` is denormalised onto operational tables so authorisation is a
+//     WHERE clause, never a post-fetch check.
+//   - Soft delete (deletedAt) on catalogue entities only. Never on money.
+//
+// This file covers milestone 1: identity, organisations, property catalogue,
+// bed inventory, listings, bookings, tenancies, check-in.
+// Payments, invoicing, commission, verification and notifications follow in
+// milestone 2.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Identity and access
+// ============================================================================
+
+enum UserStatus {
+  UNCLAIMED // created by staff during an offline booking; no login yet
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id        String     @id @default(uuid(7)) @db.Uuid
+  phone     String     @unique @db.VarChar(16)
+  email     String?    @unique @db.VarChar(255)
+  fullName  String?    @db.VarChar(120)
+  dateOfBirth DateTime? @db.Date
+  status    UserStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  orgMemberships      OrgMembership[]
+  platformMemberships PlatformMembership[]
+  authSessions        AuthSession[]
+
+  bookingsAsTenant   Booking[]  @relation("BookingTenant")
+  bookingsCreated    Booking[]  @relation("BookingCreatedBy")
+  tenancies          Tenancy[]  @relation("TenancyTenant")
+  visitsAsProspect   Visit[]    @relation("VisitProspect")
+  allocationsCreated BedAllocation[] @relation("AllocationCreatedBy")
+
+  bookingHistoryActions  BookingStatusHistory[] @relation("BookingHistoryActor")
+  tenancyHistoryActions  TenancyStatusHistory[] @relation("TenancyHistoryActor")
+  checkinEventsPerformed CheckinEvent[]         @relation("CheckinActor")
+  checkinTokensUsed      CheckinToken[]         @relation("CheckinTokenUsedBy")
+  mediaUploaded          PropertyMedia[]        @relation("MediaUploadedBy")
+  auditEntries           AuditLog[]             @relation("AuditActor")
+
+  @@index([status])
+  @@map("users")
+}
+
+enum OrgStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Organisation {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  name      String    @db.VarChar(160)
+  legalName String?   @db.VarChar(200)
+  status    OrgStatus @default(PENDING_VERIFICATION)
+
+  verificationStatus VerificationStatus @default(NOT_SUBMITTED)
+  verifiedAt         DateTime?          @db.Timestamptz(3)
+
+  // Commission free period runs from the first booking, not from signup.
+  // See docs/02 Part 0, decision 5.
+  freePeriodMonths   Int       @default(3)
+  freePeriodStartsAt DateTime? @db.Timestamptz(3)
+
+  // Razorpay Route linked account. Money splits at source; the platform
+  // never holds funds. See docs/02 Part 0.
+  razorpayAccountId String? @unique @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  memberships  OrgMembership[]
+  properties   Property[]
+  bankAccounts BankAccount[]
+  bookings     Booking[]
+  tenancies    Tenancy[]
+
+  @@index([status])
+  @@map("organisations")
+}
+
+/// Two roles only — owner and manager. Warden and accountant were dropped
+/// as unnecessary for launch (docs/02 Part 0, decision 19).
+enum OrgRole {
+  OWNER
+  MANAGER
+}
+
+model OrgMembership {
+  id     String  @id @default(uuid(7)) @db.Uuid
+  orgId  String  @db.Uuid
+  userId String  @db.Uuid
+  role   OrgRole
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  organisation Organisation             @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  properties   OrgMembershipProperty[]
+
+  @@unique([orgId, userId])
+  @@index([userId, active])
+  @@map("org_memberships")
+}
+
+/// Property scoping for managers. No rows means "all properties in the org".
+model OrgMembershipProperty {
+  membershipId String @db.Uuid
+  propertyId   String @db.Uuid
+
+  membership OrgMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@id([membershipId, propertyId])
+  @@index([propertyId])
+  @@map("org_membership_properties")
+}
+
+enum PlatformRole {
+  SUPPORT
+  MODERATOR
+  FINANCE
+  SUPER_ADMIN
+}
+
+model PlatformMembership {
+  id     String       @id @default(uuid(7)) @db.Uuid
+  userId String       @db.Uuid
+  role   PlatformRole
+  active Boolean      @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@map("platform_memberships")
+}
+
+model AuthSession {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  userId           String    @db.Uuid
+  refreshTokenHash String    @unique @db.VarChar(128)
+  /// Rotation family. Reuse of a rotated token revokes the whole family.
+  familyId         String    @db.Uuid
+  deviceLabel      String?   @db.VarChar(120)
+  ipAddress        String?   @db.VarChar(45)
+  expiresAt        DateTime  @db.Timestamptz(3)
+  revokedAt        DateTime? @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@map("auth_sessions")
+}
+
+model OtpChallenge {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  phone      String    @db.VarChar(16)
+  codeHash   String    @db.VarChar(128)
+  attempts   Int       @default(0)
+  expiresAt  DateTime  @db.Timestamptz(3)
+  consumedAt DateTime? @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([phone, createdAt])
+  @@index([expiresAt])
+  @@map("otp_challenges")
+}
+
+model BankAccount {
+  id                 String             @id @default(uuid(7)) @db.Uuid
+  orgId              String             @db.Uuid
+  accountHolderName  String             @db.VarChar(160)
+  /// Encrypted at the application layer. Never logged, never returned in a DTO.
+  accountNumberEnc   String             @db.Text
+  accountNumberLast4 String             @db.VarChar(4)
+  ifsc               String             @db.VarChar(11)
+  verificationStatus VerificationStatus @default(NOT_SUBMITTED)
+  isPrimary          Boolean            @default(false)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  organisation Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, isPrimary])
+  @@map("bank_accounts")
+}
+
+// ============================================================================
+// Property catalogue
+// ============================================================================
+
+/// Localities are first-class so search, SEO pages and filters share one
+/// canonical list. Free-text areas produce three spellings within a week.
+model Locality {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  city        String  @default("Hyderabad") @db.VarChar(80)
+  name        String  @db.VarChar(120)
+  slug        String  @unique @db.VarChar(140)
+  centroidLat Decimal? @db.Decimal(10, 7)
+  centroidLng Decimal? @db.Decimal(10, 7)
+  active      Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  properties Property[]
+
+  @@index([city, active])
+  @@map("localities")
+}
+
+enum GenderPolicy {
+  MEN
+  WOMEN
+  CO_LIVING
+}
+
+enum PropertyType {
+  PG
+  HOSTEL
+  CO_LIVING
+}
+
+model Property {
+  id    String @id @default(uuid(7)) @db.Uuid
+  orgId String @db.Uuid
+
+  name         String       @db.VarChar(160)
+  propertyType PropertyType @default(PG)
+  genderPolicy GenderPolicy
+
+  addressLine1 String  @db.VarChar(200)
+  addressLine2 String? @db.VarChar(200)
+  landmark     String? @db.VarChar(160)
+  localityId   String  @db.Uuid
+  pincode      String  @db.VarChar(6)
+
+  /// Geocoded once at write time. Never geocode per search request.
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+
+  contactPhone String? @db.VarChar(16)
+
+  /// Owner default for the rent cycle. A tenancy may override it.
+  /// Null means "anchor to each tenant's move-in date" (docs/02 decision 9).
+  defaultRentCycleDay Int? @db.SmallInt
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  organisation Organisation @relation(fields: [orgId], references: [id])
+  locality     Locality     @relation(fields: [localityId], references: [id])
+
+  rooms          Room[]
+  beds           Bed[]
+  media          PropertyMedia[]
+  amenities      PropertyAmenity[]
+  rules          PropertyRule?
+  mealPlan       PropertyMealPlan?
+  listing        Listing?
+  allocations    BedAllocation[]
+  bookings       Booking[]
+  tenancies      Tenancy[]
+  visits         Visit[]
+  checkinEvents  CheckinEvent[]
+  scopedMembers  OrgMembershipProperty[]
+
+  /// Anchors the composite foreign key on rooms, so a room can never claim
+  /// to belong to a property its parent does not.
+  @@unique([id, orgId])
+  @@index([orgId, deletedAt])
+  @@index([localityId, genderPolicy, deletedAt])
+  @@index([latitude, longitude])
+  @@map("properties")
+}
+
+enum FoodType {
+  VEG
+  NON_VEG
+  BOTH
+  NONE
+}
+
+model PropertyMealPlan {
+  propertyId       String   @id @db.Uuid
+  foodType         FoodType @default(VEG)
+  breakfast        Boolean  @default(false)
+  lunch            Boolean  @default(false)
+  dinner           Boolean  @default(false)
+  includedInRent   Boolean  @default(true)
+  extraChargePaise Int?
+  notes            String?  @db.VarChar(500)
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_meal_plans")
+}
+
+model PropertyRule {
+  propertyId      String   @id @db.Uuid
+  gateClosingTime String?  @db.VarChar(5) // "22:30"
+  visitorsAllowed Boolean  @default(true)
+  smokingAllowed  Boolean  @default(false)
+  alcoholAllowed  Boolean  @default(false)
+  cookingAllowed  Boolean  @default(false)
+  notes           String?  @db.VarChar(1000)
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_rules")
+}
+
+model Amenity {
+  id           String  @id @default(uuid(7)) @db.Uuid
+  code         String  @unique @db.VarChar(60)
+  name         String  @db.VarChar(120)
+  category     String  @db.VarChar(60)
+  isFilterable Boolean @default(true)
+
+  properties PropertyAmenity[]
+
+  @@map("amenities")
+}
+
+model PropertyAmenity {
+  propertyId String @db.Uuid
+  amenityId  String @db.Uuid
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenity  Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, amenityId])
+  @@index([amenityId])
+  @@map("property_amenities")
+}
+
+enum MediaKind {
+  PHOTO
+  VIDEO
+}
+
+/// Photo coverage replaces the site visit, so it is a listing requirement
+/// rather than a suggestion (docs/02 Part 0, note on decision 8).
+enum MediaTag {
+  EXTERIOR
+  ROOM
+  BATHROOM
+  KITCHEN
+  COMMON_AREA
+  DINING
+  ENTRANCE
+  OTHER
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model PropertyMedia {
+  id         String           @id @default(uuid(7)) @db.Uuid
+  propertyId String           @db.Uuid
+  roomId     String?          @db.Uuid
+  kind       MediaKind        @default(PHOTO)
+  tag        MediaTag         @default(OTHER)
+  /// Object key in the private R2 bucket. Served only via pre-signed URLs.
+  storageKey String           @db.VarChar(400)
+  mimeType   String           @db.VarChar(80)
+  sizeBytes  Int
+  sortOrder  Int              @default(0)
+  moderation ModerationStatus @default(PENDING)
+
+  uploadedById String?  @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  room       Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  uploadedBy User?    @relation("MediaUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, sortOrder])
+  @@index([moderation])
+  @@map("property_media")
+}
+
+// ============================================================================
+// Inventory — rooms and beds
+// ============================================================================
+
+enum SharingType {
+  SINGLE
+  DOUBLE
+  TRIPLE
+  QUAD
+  DORMITORY
+}
+
+enum RoomGender {
+  MEN
+  WOMEN
+  ANY
+}
+
+/// Bed-level inventory is the model (docs/02 Part 0, decision 1).
+/// WHOLE_ROOM is a sale policy on top of it, not a different structure —
+/// the room still holds beds, they are simply allocated together.
+enum SaleMode {
+  PER_BED
+  WHOLE_ROOM
+}
+
+enum RoomStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Room {
+  id         String @id @default(uuid(7)) @db.Uuid
+  propertyId String @db.Uuid
+  orgId      String @db.Uuid
+
+  code            String      @db.VarChar(24) // "101", "A-3"
+  floor           Int?        @db.SmallInt
+  sharingType     SharingType
+  /// Declared intent, not COUNT(beds). A triple room with two beds created
+  /// so far is an incomplete setup, not a double room.
+  sharingCapacity Int         @db.SmallInt
+  saleMode        SaleMode    @default(PER_BED)
+  gender          RoomGender
+
+  hasAc             Boolean @default(false)
+  hasAttachedBath   Boolean @default(false)
+  hasBalcony        Boolean @default(false)
+
+  /// Rent for one bed in this room, in paise. A bed may override it.
+  baseRentPaise    Int
+  depositPaise     Int    @default(0)
+
+  status    RoomStatus @default(ACTIVE)
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime   @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime?  @db.Timestamptz(3)
+
+  property Property        @relation(fields: [propertyId], references: [id])
+  beds     Bed[]
+  media    PropertyMedia[]
+  bookings Booking[]
+
+  @@unique([propertyId, code])
+  /// Anchors the composite FK on beds — see Bed.property.
+  @@unique([id, propertyId])
+  @@index([propertyId, status, deletedAt])
+  @@index([propertyId, sharingType, baseRentPaise])
+  @@map("rooms")
+}
+
+enum BedStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED // maintenance — invisible to tenants, visible to the owner
+}
+
+model Bed {
+  id     String @id @default(uuid(7)) @db.Uuid
+  roomId String @db.Uuid
+  /// Denormalised from the room. Authorisation and availability both filter
+  /// by property on the hottest path in the product; the composite foreign
+  /// key below makes drift impossible.
+  propertyId String @db.Uuid
+
+  code              String    @db.VarChar(16) // "A", "1", "upper"
+  rentOverridePaise Int?
+  status            BedStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  room     Room     @relation(fields: [roomId, propertyId], references: [id, propertyId])
+  property Property @relation(fields: [propertyId], references: [id])
+
+  allocations BedAllocation[]
+  bookings    Booking[]
+  tenancies   Tenancy[]
+
+  @@unique([roomId, code])
+  @@index([propertyId, status, deletedAt])
+  @@map("beds")
+}
+
+// ============================================================================
+// Bed allocations — the core correctness guarantee
+// ============================================================================
+
+enum AllocationKind {
+  HOLD     // short-lived reservation during checkout
+  BOOKING  // confirmed booking, pre-occupancy
+  TENANCY  // someone is actually living there
+  BLOCK    // maintenance
+}
+
+enum AllocationStatus {
+  ACTIVE
+  RELEASED
+}
+
+/// Every claim on a bed — hold, booking, tenancy or maintenance block — is a
+/// row here with a date range. A PostgreSQL exclusion constraint added in the
+/// initial migration makes overlapping ACTIVE rows for the same bed
+/// impossible:
+///
+///   EXCLUDE USING gist (
+///     bed_id WITH =,
+///     daterange(start_date, end_date, '[)') WITH &&
+///   ) WHERE (status = 'ACTIVE')
+///
+/// Two tenants paying for the last bed in the same second: one commits, the
+/// other gets a constraint violation the service turns into a clean retry.
+/// A null endDate means an open-ended stay and blocks all future dates until
+/// notice is given.
+model BedAllocation {
+  id         String @id @default(uuid(7)) @db.Uuid
+  bedId      String @db.Uuid
+  propertyId String @db.Uuid
+
+  startDate DateTime  @db.Date
+  /// Exclusive upper bound. Null = open-ended.
+  endDate   DateTime? @db.Date
+
+  kind   AllocationKind
+  status AllocationStatus @default(ACTIVE)
+
+  bookingId String? @db.Uuid
+  tenancyId String? @db.Uuid
+
+  /// Holds only. The sweeper releases expired holds; allocation attempts also
+  /// release them inline before inserting.
+  expiresAt DateTime? @db.Timestamptz(3)
+
+  createdById   String?   @db.Uuid
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  releasedAt    DateTime? @db.Timestamptz(3)
+  releaseReason String?   @db.VarChar(200)
+
+  bed       Bed      @relation(fields: [bedId], references: [id])
+  property  Property @relation(fields: [propertyId], references: [id])
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  tenancy   Tenancy? @relation(fields: [tenancyId], references: [id], onDelete: SetNull)
+  createdBy User?    @relation("AllocationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([bedId, status])
+  @@index([propertyId, status, startDate])
+  @@index([bookingId])
+  @@index([tenancyId])
+  // The hold-expiry index is partial (kind = HOLD AND status = ACTIVE) and is
+  // created in the migration SQL. Prisma cannot express partial indexes, so
+  // declaring it here too would make every migrate run try to replace it.
+  @@map("bed_allocations")
+}
+
+// ============================================================================
+// Listings
+// ============================================================================
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  UNLISTED
+  SUSPENDED
+}
+
+model Listing {
+  id         String        @id @default(uuid(7)) @db.Uuid
+  propertyId String        @unique @db.Uuid
+  status     ListingStatus @default(DRAFT)
+
+  headline    String? @db.VarChar(200)
+  description String? @db.Text
+
+  completenessScore Int       @default(0) @db.SmallInt
+  publishedAt       DateTime? @db.Timestamptz(3)
+  rejectionReason   String?   @db.VarChar(500)
+
+  /// Staleness enforcement: rank down after 7 days, hide after 21
+  /// (docs/02 Part 0, decision 17).
+  availabilityConfirmedAt DateTime? @db.Timestamptz(3)
+  /// Rolling measure of how fast the owner answers booking requests.
+  responseScore           Int       @default(0) @db.SmallInt
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([status, publishedAt])
+  @@index([status, availabilityConfirmedAt])
+  @@map("listings")
+}
+
+/// Zero-result searches are the most valuable early signal for supply
+/// acquisition — they say exactly where you need PGs (docs/01 M-14).
+model SearchMiss {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  localityId  String?  @db.Uuid
+  filters     Json
+  resultCount Int      @default(0)
+  userId      String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([localityId, createdAt])
+  @@map("search_misses")
+}
+
+// ============================================================================
+// Visits
+// ============================================================================
+
+enum VisitStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum VisitOutcome {
+  VISITED
+  NO_SHOW
+  NOT_INTERESTED
+  CONVERTED
+}
+
+/// Secondary to booking (docs/02 Part 0, decision 8) — recorded when a visit
+/// happens so its frequency is visible, but not the primary funnel.
+model Visit {
+  id             String @id @default(uuid(7)) @db.Uuid
+  propertyId     String @db.Uuid
+  prospectUserId String @db.Uuid
+
+  requestedStart DateTime    @db.Timestamptz(3)
+  requestedEnd   DateTime    @db.Timestamptz(3)
+  confirmedAt    DateTime?   @db.Timestamptz(3)
+  status         VisitStatus @default(REQUESTED)
+  outcome        VisitOutcome?
+
+  ownerRespondedAt DateTime? @db.Timestamptz(3)
+  expiresAt        DateTime  @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  prospect User     @relation("VisitProspect", fields: [prospectUserId], references: [id])
+
+  @@index([propertyId, status])
+  @@index([prospectUserId, createdAt])
+  @@index([status, expiresAt])
+  @@map("visits")
+}
+
+// ============================================================================
+// Bookings
+// ============================================================================
+
+enum BookingSource {
+  ONLINE  // tenant booked through the app
+  OFFLINE // staff created it for a walk-in
+}
+
+enum BookingStatus {
+  DRAFT
+  HELD
+  PENDING_PAYMENT
+  PAYMENT_FAILED
+  PENDING_APPROVAL // owner has 12 hours (docs/02 Part 0, decision 7)
+  CONFIRMED
+  CHECKED_IN
+  CANCELLED
+  REJECTED
+  EXPIRED
+  NO_SHOW
+}
+
+model Booking {
+  id         String @id @default(uuid(7)) @db.Uuid
+  orgId      String @db.Uuid
+  propertyId String @db.Uuid
+  roomId     String @db.Uuid
+  bedId      String @db.Uuid
+
+  tenantUserId String        @db.Uuid
+  source       BookingSource @default(ONLINE)
+  status       BookingStatus @default(DRAFT)
+
+  moveInDate DateTime @db.Date
+
+  /// Terms are frozen onto the booking at acceptance. The listing price will
+  /// change; what the tenant agreed to must not. This is also the evidence in
+  /// a dispute.
+  agreedRentPaise    Int
+  agreedDepositPaise Int  @default(0)
+  /// What is actually charged through the app now — the real first month's
+  /// rent, not a token (docs/02 Part 0, decision 2).
+  payableNowPaise    Int
+  /// Tenant-side convenience fee, added on top.
+  convenienceFeePaise Int @default(0)
+  noticeDays         Int  @default(30)
+  lockInDays         Int  @default(0)
+
+  termsVersion    String?   @db.VarChar(40)
+  termsAcceptedAt DateTime? @db.Timestamptz(3)
+
+  ownerRespondedAt DateTime? @db.Timestamptz(3)
+  approvalExpiresAt DateTime? @db.Timestamptz(3)
+  cancelledAt      DateTime? @db.Timestamptz(3)
+  cancellationReason String? @db.VarChar(400)
+
+  /// Stops a double-tapped "Book" button producing two bookings and two holds.
+  idempotencyKey String? @unique @db.VarChar(80)
+
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  organisation Organisation @relation(fields: [orgId], references: [id])
+  property     Property     @relation(fields: [propertyId], references: [id])
+  room         Room         @relation(fields: [roomId], references: [id])
+  bed          Bed          @relation(fields: [bedId], references: [id])
+  tenant       User         @relation("BookingTenant", fields: [tenantUserId], references: [id])
+  createdBy    User?        @relation("BookingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  allocations   BedAllocation[]
+  statusHistory BookingStatusHistory[]
+  checkinTokens CheckinToken[]
+  checkinEvents CheckinEvent[]
+  tenancy       Tenancy?
+
+  @@index([orgId, status])
+  @@index([propertyId, status, moveInDate])
+  @@index([tenantUserId, createdAt])
+  @@index([status, approvalExpiresAt])
+  @@map("bookings")
+}
+
+/// Append-only. Overwriting a status column loses exactly what support and
+/// finance need most.
+model BookingStatusHistory {
+  id         String         @id @default(uuid(7)) @db.Uuid
+  bookingId  String         @db.Uuid
+  fromStatus BookingStatus?
+  toStatus   BookingStatus
+  actorId    String?        @db.Uuid
+  reason     String?        @db.VarChar(400)
+  occurredAt DateTime       @default(now()) @db.Timestamptz(3)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("BookingHistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId, occurredAt])
+  @@map("booking_status_history")
+}
+
+// ============================================================================
+// Tenancies
+// ============================================================================
+
+enum TenancyStatus {
+  ACTIVE
+  NOTICE_GIVEN
+  ENDED
+}
+
+enum TenancyEndReason {
+  NOTICE_COMPLETED
+  EARLY_EXIT
+  TRANSFERRED
+  EVICTED
+  ABSCONDED
+}
+
+/// A booking is a claim; a tenancy is occupancy. Check-in converts one into
+/// the other. Keeping them separate is what makes "confirmed but never
+/// arrived" representable.
+model Tenancy {
+  id         String @id @default(uuid(7)) @db.Uuid
+  orgId      String @db.Uuid
+  propertyId String @db.Uuid
+  bedId      String @db.Uuid
+
+  tenantUserId String  @db.Uuid
+  bookingId    String? @unique @db.Uuid
+
+  startDate DateTime  @db.Date
+  /// Null until notice is given. Setting it frees future dates on the bed,
+  /// which is what makes the bed pre-sellable.
+  endDate   DateTime? @db.Date
+
+  /// The negotiated terms govern invoicing — never the listing price.
+  agreedRentPaise Int
+  depositPaise    Int @default(0)
+  /// Day of month rent falls due. Null = anchored to the move-in date
+  /// (docs/02 Part 0, decision 9).
+  cycleAnchorDay  Int? @db.SmallInt
+  noticeDays      Int  @default(30)
+  lockInUntil     DateTime? @db.Date
+
+  status             TenancyStatus     @default(ACTIVE)
+  noticeGivenAt      DateTime?         @db.Timestamptz(3)
+  intendedVacateDate DateTime?         @db.Date
+  actualVacateDate   DateTime?         @db.Date
+  endReason          TenancyEndReason?
+
+  /// Room and bed transfers close one tenancy and open another, linked, so
+  /// occupancy history and the invoice trail stay intact.
+  previousTenancyId String? @unique @db.Uuid
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  organisation     Organisation @relation(fields: [orgId], references: [id])
+  property         Property     @relation(fields: [propertyId], references: [id])
+  bed              Bed          @relation(fields: [bedId], references: [id])
+  tenant           User         @relation("TenancyTenant", fields: [tenantUserId], references: [id])
+  booking          Booking?     @relation(fields: [bookingId], references: [id])
+  previousTenancy  Tenancy?     @relation("TenancyChain", fields: [previousTenancyId], references: [id])
+  nextTenancy      Tenancy?     @relation("TenancyChain")
+
+  allocations   BedAllocation[]
+  statusHistory TenancyStatusHistory[]
+  checkinEvents CheckinEvent[]
+
+  @@index([orgId, status])
+  @@index([propertyId, status])
+  @@index([tenantUserId, status])
+  @@index([status, cycleAnchorDay])
+  @@map("tenancies")
+}
+
+model TenancyStatusHistory {
+  id         String         @id @default(uuid(7)) @db.Uuid
+  tenancyId  String         @db.Uuid
+  fromStatus TenancyStatus?
+  toStatus   TenancyStatus
+  actorId    String?        @db.Uuid
+  reason     String?        @db.VarChar(400)
+  occurredAt DateTime       @default(now()) @db.Timestamptz(3)
+
+  tenancy Tenancy @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("TenancyHistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([tenancyId, occurredAt])
+  @@map("tenancy_status_history")
+}
+
+// ============================================================================
+// Check-in
+// ============================================================================
+
+/// Only the hash is stored — a leaked database must not yield working QR
+/// codes. Single-use and short-lived; validation is always server-side.
+model CheckinToken {
+  id        String @id @default(uuid(7)) @db.Uuid
+  bookingId String @db.Uuid
+
+  tokenHash String    @unique @db.VarChar(128)
+  validFrom DateTime  @db.Timestamptz(3)
+  validTo   DateTime  @db.Timestamptz(3)
+  usedAt    DateTime? @db.Timestamptz(3)
+  usedById  String?   @db.Uuid
+  revokedAt DateTime? @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  usedBy  User?   @relation("CheckinTokenUsedBy", fields: [usedById], references: [id], onDelete: SetNull)
+
+  @@index([bookingId, revokedAt])
+  @@map("checkin_tokens")
+}
+
+enum CheckinKind {
+  CHECK_IN
+  CHECK_OUT
+}
+
+enum CheckinMethod {
+  QR
+  MANUAL
+}
+
+model CheckinEvent {
+  id         String @db.Uuid @id @default(uuid(7))
+  bookingId  String? @db.Uuid
+  tenancyId  String? @db.Uuid
+  propertyId String  @db.Uuid
+
+  kind   CheckinKind
+  method CheckinMethod
+
+  actorId        String?  @db.Uuid
+  /// Required for manual check-in and for any out-of-window override.
+  overrideReason String?  @db.VarChar(400)
+  occurredAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  booking  Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  tenancy  Tenancy?  @relation(fields: [tenancyId], references: [id], onDelete: SetNull)
+  property Property  @relation(fields: [propertyId], references: [id])
+  actor    User?     @relation("CheckinActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, occurredAt])
+  @@index([bookingId])
+  @@index([tenancyId])
+  @@map("checkin_events")
+}
+
+// ============================================================================
+// Audit
+// ============================================================================
+
+/// Append-only. The application role gets INSERT and SELECT only — no UPDATE,
+/// no DELETE. Enforced by grants in the initial migration.
+model AuditLog {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  actorId     String?  @db.Uuid
+  actorRole   String?  @db.VarChar(40)
+  action      String   @db.VarChar(80)
+  subjectType String   @db.VarChar(60)
+  subjectId   String?  @db.Uuid
+  orgId       String?  @db.Uuid
+  reason      String?  @db.VarChar(400)
+  ipAddress   String?  @db.VarChar(45)
+  userAgent   String?  @db.VarChar(300)
+  metadata    Json?
+  occurredAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([subjectType, subjectId, occurredAt])
+  @@index([orgId, occurredAt])
+  @@index([actorId, occurredAt])
+  @@map("audit_log")
+}
