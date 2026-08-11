@@ -482,7 +482,10 @@ model Room {
   updatedAt DateTime   @updatedAt @db.Timestamptz(3)
   deletedAt DateTime?  @db.Timestamptz(3)
 
-  property Property        @relation(fields: [propertyId], references: [id])
+  /// Composite key, not just propertyId: orgId is denormalised here for
+  /// authorisation queries, and this makes it impossible for a room to claim
+  /// an organisation its property does not belong to.
+  property Property        @relation(fields: [propertyId, orgId], references: [id, orgId])
   beds     Bed[]
   media    PropertyMedia[]
   bookings Booking[]

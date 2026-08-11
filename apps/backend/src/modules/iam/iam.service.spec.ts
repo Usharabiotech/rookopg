@@ -97,10 +97,30 @@ describe('IamService authorisation', () => {
 
   describe('platform staff', () => {
     const support = actor({ platformRoles: [PlatformRole.SUPPORT] });
+    const superAdmin = actor({ platformRoles: [PlatformRole.SUPER_ADMIN] });
 
-    it('may read any organisation', () => {
+    it('may read any organisation, for support work', () => {
       expect(() => iam.assertOrgAccess(support, ORG_B)).not.toThrow();
       expect(() => iam.assertPropertyAccess(support, ORG_B, PROP_2)).not.toThrow();
+    });
+
+    // Cross-organisation read access must not quietly promote a support agent
+    // into an owner. Deleting a PG is owner-only.
+    it('does NOT satisfy an owner-only operation', () => {
+      expect(() => iam.assertOrgAccess(support, ORG_B, [OrgRole.OWNER])).toThrow(ForbiddenError);
+      expect(() => iam.assertPropertyAccess(support, ORG_B, PROP_2, [OrgRole.OWNER])).toThrow(
+        ForbiddenError,
+      );
+    });
+
+    it('does not satisfy a manager-level operation either', () => {
+      expect(() =>
+        iam.assertOrgAccess(support, ORG_B, [OrgRole.OWNER, OrgRole.MANAGER]),
+      ).toThrow(ForbiddenError);
+    });
+
+    it('allows SUPER_ADMIN through role-restricted operations', () => {
+      expect(() => iam.assertOrgAccess(superAdmin, ORG_B, [OrgRole.OWNER])).not.toThrow();
     });
   });
 });

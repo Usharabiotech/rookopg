@@ -9,6 +9,10 @@ import { validateEnv } from './config/env.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { IamModule } from './modules/iam/iam.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { OrganisationModule } from './modules/organisation/organisation.module';
+import { PropertyModule } from './modules/property/property.module';
+import { ReferenceModule } from './modules/reference/reference.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -25,6 +29,10 @@ import { HealthController } from './health.controller';
     CryptoModule,
     IamModule,
     AuthModule,
+    ReferenceModule,
+    OrganisationModule,
+    PropertyModule,
+    InventoryModule,
   ],
   controllers: [HealthController],
   providers: [

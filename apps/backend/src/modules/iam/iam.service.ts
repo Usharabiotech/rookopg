@@ -84,9 +84,23 @@ export class IamService {
     return actor.platformRoles.length > 0;
   }
 
+  /**
+   * Platform staff can read across organisations for support work, but that
+   * must not silently promote them into owner-level authority.
+   *
+   * A SUPPORT agent helping a tenant should never be able to delete a PG.
+   * Only SUPER_ADMIN satisfies a role-restricted operation, and that path is
+   * meant to be rare and audited.
+   */
+  private platformStaffMayAct(actor: AuthenticatedActor, roleRestricted: boolean): boolean {
+    if (!this.isPlatformStaff(actor)) return false;
+    if (!roleRestricted) return true;
+    return actor.platformRoles.includes(PlatformRole.SUPER_ADMIN);
+  }
+
   /** Throws unless the actor belongs to the organisation with a sufficient role. */
   assertOrgAccess(actor: AuthenticatedActor, orgId: string, allowed: OrgRole[] = []): void {
-    if (this.isPlatformStaff(actor)) return;
+    if (this.platformStaffMayAct(actor, allowed.length > 0)) return;
 
     const membership = this.findMembership(actor, orgId);
     if (!membership) {
@@ -107,7 +121,7 @@ export class IamService {
     propertyId: string,
     allowed: OrgRole[] = [],
   ): void {
-    if (this.isPlatformStaff(actor)) return;
+    if (this.platformStaffMayAct(actor, allowed.length > 0)) return;
 
     this.assertOrgAccess(actor, orgId, allowed);
 

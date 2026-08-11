@@ -147,6 +147,23 @@ export class AuthRepository {
   }
 
   /**
+   * Revoke only if still live, reporting whether this call was the one that
+   * did it.
+   *
+   * Two requests presenting the same refresh token at once would both pass a
+   * read-then-write check and both mint a session — quietly defeating reuse
+   * detection. The conditional updateMany makes exactly one of them the
+   * winner.
+   */
+  async tryRevokeLiveSession(id: string): Promise<boolean> {
+    const result = await this.prisma.authSession.updateMany({
+      where: { id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return result.count === 1;
+  }
+
+  /**
    * Reuse of an already-rotated refresh token means the token was stolen.
    * Kill every session in the family, not just the one presented.
    */

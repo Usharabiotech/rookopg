@@ -174,7 +174,21 @@ export class AuthService {
       throw new UnauthorisedError(DomainErrorCode.REFRESH_TOKEN_INVALID, 'Please sign in again');
     }
 
-    await this.repository.revokeSession(session.id);
+    // Claim the rotation atomically. If another request got here first with
+    // the same token, this call loses and is treated as reuse — otherwise two
+    // concurrent refreshes would both mint a session and reuse detection
+    // would never fire.
+    const claimed = await this.repository.tryRevokeLiveSession(session.id);
+    if (!claimed) {
+      const revoked = await this.repository.revokeFamily(session.familyId);
+      this.logger.error(
+        `Concurrent refresh of the same token for user ${session.userId}; revoked ${revoked} session(s) in family ${session.familyId}`,
+      );
+      throw new UnauthorisedError(
+        DomainErrorCode.REFRESH_TOKEN_REUSED,
+        'Your session was ended for security reasons. Please sign in again.',
+      );
+    }
 
     const issued = await this.tokens.issue({
       userId: session.userId,
