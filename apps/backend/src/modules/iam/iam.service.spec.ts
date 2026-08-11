@@ -1,12 +1,22 @@
-import { OrgRole, PlatformRole } from '@prisma/client';
+﻿import { OrgRole, PlatformRole } from '@prisma/client';
 import { ForbiddenError } from '../../common/errors/domain.error';
 import { IamService } from './iam.service';
-import type { AuthenticatedActor } from '../auth/auth.types';
+import type { ActorMembership, AuthenticatedActor } from '../auth/auth.types';
 
 const ORG_A = 'org-a';
 const ORG_B = 'org-b';
 const PROP_1 = 'prop-1';
 const PROP_2 = 'prop-2';
+
+function membership(overrides: Partial<ActorMembership> = {}): ActorMembership {
+  return {
+    orgId: ORG_A,
+    role: OrgRole.MANAGER,
+    propertyIds: [],
+    canCreateProperties: false,
+    ...overrides,
+  };
+}
 
 function actor(overrides: Partial<AuthenticatedActor> = {}): AuthenticatedActor {
   return {
@@ -25,7 +35,7 @@ describe('IamService authorisation', () => {
 
   describe('cross-organisation isolation', () => {
     const ownerOfA = actor({
-      memberships: [{ orgId: ORG_A, role: OrgRole.OWNER, propertyIds: [] }],
+      memberships: [membership({ role: OrgRole.OWNER })],
     });
 
     it('allows an owner into their own organisation', () => {
@@ -43,7 +53,7 @@ describe('IamService authorisation', () => {
 
   describe('role requirements', () => {
     const manager = actor({
-      memberships: [{ orgId: ORG_A, role: OrgRole.MANAGER, propertyIds: [] }],
+      memberships: [membership()],
     });
 
     it('lets a manager through where a manager is allowed', () => {
@@ -57,13 +67,13 @@ describe('IamService authorisation', () => {
 
   describe('property scoping', () => {
     const scopedManager = actor({
-      memberships: [{ orgId: ORG_A, role: OrgRole.MANAGER, propertyIds: [PROP_1] }],
+      memberships: [membership({ propertyIds: [PROP_1] })],
     });
     const unscopedManager = actor({
-      memberships: [{ orgId: ORG_A, role: OrgRole.MANAGER, propertyIds: [] }],
+      memberships: [membership()],
     });
     const owner = actor({
-      memberships: [{ orgId: ORG_A, role: OrgRole.OWNER, propertyIds: [] }],
+      memberships: [membership({ role: OrgRole.OWNER })],
     });
 
     it('allows a scoped manager into their property', () => {
@@ -92,6 +102,38 @@ describe('IamService authorisation', () => {
 
     it('throws rather than returning an empty filter for an outsider', () => {
       expect(() => iam.visiblePropertyIds(actor(), ORG_A)).toThrow(ForbiddenError);
+    });
+  });
+
+  describe('permission to add a property', () => {
+    const owner = actor({ memberships: [membership({ role: OrgRole.OWNER })] });
+    const plainManager = actor({ memberships: [membership()] });
+    const trustedManager = actor({ memberships: [membership({ canCreateProperties: true })] });
+
+    it('always allows an owner, without needing the flag', () => {
+      expect(() => iam.assertCanCreateProperty(owner, ORG_A)).not.toThrow();
+    });
+
+    it('refuses a manager by default', () => {
+      expect(() => iam.assertCanCreateProperty(plainManager, ORG_A)).toThrow(ForbiddenError);
+    });
+
+    it('allows a manager the owner has granted it', () => {
+      expect(() => iam.assertCanCreateProperty(trustedManager, ORG_A)).not.toThrow();
+    });
+
+    it('does not let the grant leak into another organisation', () => {
+      expect(() => iam.assertCanCreateProperty(trustedManager, ORG_B)).toThrow(ForbiddenError);
+    });
+
+    it('refuses an outsider', () => {
+      expect(() => iam.assertCanCreateProperty(actor(), ORG_A)).toThrow(ForbiddenError);
+    });
+
+    it('tells the manager what to do about it', () => {
+      expect(() => iam.assertCanCreateProperty(plainManager, ORG_A)).toThrow(
+        /ask the owner to enable it/i,
+      );
     });
   });
 

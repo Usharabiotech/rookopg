@@ -34,6 +34,7 @@ export class IamService {
       select: {
         orgId: true,
         role: true,
+        canCreateProperties: true,
         properties: { select: { propertyId: true } },
       },
     });
@@ -41,6 +42,7 @@ export class IamService {
     return rows.map((row) => ({
       orgId: row.orgId,
       role: row.role,
+      canCreateProperties: row.canCreateProperties,
       propertyIds: row.properties.map((property) => property.propertyId),
     }));
   }
@@ -51,6 +53,7 @@ export class IamService {
       select: {
         orgId: true,
         role: true,
+        canCreateProperties: true,
         organisation: { select: { name: true } },
         properties: { select: { propertyId: true } },
       },
@@ -59,6 +62,7 @@ export class IamService {
     return rows.map((row) => ({
       orgId: row.orgId,
       role: row.role,
+      canCreateProperties: row.canCreateProperties,
       orgName: row.organisation.name,
       propertyIds: row.properties.map((property) => property.propertyId),
     }));
@@ -108,6 +112,27 @@ export class IamService {
     }
     if (allowed.length > 0 && !allowed.includes(membership.role)) {
       throw new ForbiddenError();
+    }
+  }
+
+  /**
+   * Adding a building to the business is an owner's decision, so a manager
+   * needs it granted explicitly.
+   *
+   * Without this, a property-scoped manager could create a property and then
+   * immediately lose sight of it, because the new property is not in their
+   * scope — confusing, and not something they should be doing unasked.
+   */
+  assertCanCreateProperty(actor: AuthenticatedActor, orgId: string): void {
+    if (this.platformStaffMayAct(actor, true)) return;
+
+    const membership = this.findMembership(actor, orgId);
+    if (!membership) throw new ForbiddenError();
+    if (membership.role === OrgRole.OWNER) return;
+    if (!membership.canCreateProperties) {
+      throw new ForbiddenError(
+        'Your account cannot add properties. Ask the owner to enable it for you.',
+      );
     }
   }
 

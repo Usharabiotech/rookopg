@@ -28,7 +28,7 @@ export class PropertyService {
     orgId: string,
     dto: CreatePropertyDto,
   ): Promise<PropertyDetailDto> {
-    this.iam.assertOrgAccess(actor, orgId, PROPERTY_WRITERS);
+    this.iam.assertCanCreateProperty(actor, orgId);
     await this.assertReferencesExist(dto.localityId, dto.amenityCodes ?? []);
 
     const property = await this.repository.create({

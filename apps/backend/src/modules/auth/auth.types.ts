@@ -5,6 +5,8 @@ export interface ActorMembership {
   role: OrgRole;
   /** Empty means the member is scoped to every property in the organisation. */
   propertyIds: string[];
+  /** Owners always may; a manager only when the owner has granted it. */
+  canCreateProperties: boolean;
 }
 
 /**

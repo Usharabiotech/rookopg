@@ -13,6 +13,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { OrganisationModule } from './modules/organisation/organisation.module';
 import { PropertyModule } from './modules/property/property.module';
 import { ReferenceModule } from './modules/reference/reference.module';
+import { StaffModule } from './modules/staff/staff.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -31,6 +32,7 @@ import { HealthController } from './health.controller';
     AuthModule,
     ReferenceModule,
     OrganisationModule,
+    StaffModule,
     PropertyModule,
     InventoryModule,
   ],

@@ -55,6 +55,9 @@ export class MembershipDto {
 
   @ApiProperty({ type: [String], description: 'Empty means all properties in the organisation' })
   propertyIds!: string[];
+
+  @ApiProperty({ description: 'Whether this member may add new properties' })
+  canCreateProperties!: boolean;
 }
 
 /**

@@ -125,6 +125,14 @@ model OrgMembership {
   role   OrgRole
   active Boolean @default(true)
 
+  /// Explicit grants layered on top of the role.
+  ///
+  /// Role alone is too blunt: most managers run the building they are given,
+  /// while a trusted one also opens new ones. Owners always have every
+  /// permission implicitly; these flags only ever widen a MANAGER.
+  /// Default off — an owner opts a manager in.
+  canCreateProperties Boolean @default(false)
+
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 

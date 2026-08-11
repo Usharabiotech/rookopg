@@ -240,6 +240,8 @@ export class AuthService {
         orgName: membership.orgName,
         role: membership.role,
         propertyIds: membership.propertyIds,
+        canCreateProperties:
+          membership.role === 'OWNER' || membership.canCreateProperties,
       })),
       platformRoles,
     };
