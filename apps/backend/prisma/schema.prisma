@@ -784,6 +784,13 @@ model Booking {
   /// Stops a double-tapped "Book" button producing two bookings and two holds.
   idempotencyKey String? @unique @db.VarChar(80)
 
+  /// Gateway order for the amount payable now. Absent for offline bookings,
+  /// where no money passes through us.
+  gatewayOrderId String? @unique @db.VarChar(64)
+  paidAt         DateTime? @db.Timestamptz(3)
+  /// When the checkout hold lapses, freeing the bed.
+  holdExpiresAt  DateTime? @db.Timestamptz(3)
+
   createdById String?  @db.Uuid
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
@@ -800,6 +807,7 @@ model Booking {
   checkinTokens CheckinToken[]
   checkinEvents CheckinEvent[]
   tenancy       Tenancy?
+  paymentEvents PaymentEvent[]
 
   @@index([orgId, status])
   @@index([propertyId, status, moveInDate])
@@ -1135,6 +1143,7 @@ model Payment {
   tenant       User                @relation("PaymentTenant", fields: [tenantUserId], references: [id])
   recordedBy   User?               @relation("PaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
   allocations  PaymentAllocation[]
+  events       PaymentEvent[]
 
   @@index([orgId, receivedAt])
   @@index([propertyId, receivedAt])
@@ -1166,4 +1175,34 @@ model PaymentAllocation {
   @@unique([paymentId, invoiceId])
   @@index([invoiceId])
   @@map("payment_allocations")
+}
+
+/// Raw, verified notifications from the payment gateway.
+///
+/// The unique gateway event id is the idempotency guarantee: gateways retry,
+/// and a duplicate must not move money twice. Enforced by the database rather
+/// than by remembering to check, because two instances can process the same
+/// retry at the same moment.
+model PaymentEvent {
+  id             String  @id @default(uuid(7)) @db.Uuid
+  gatewayEventId String  @unique @db.VarChar(120)
+  paymentId      String? @db.Uuid
+  bookingId      String? @db.Uuid
+
+  eventType         String  @db.VarChar(80)
+  signatureVerified Boolean @default(false)
+  /// Redacted before storage — never a full gateway payload.
+  payload           Json?
+
+  receivedAt       DateTime  @default(now()) @db.Timestamptz(3)
+  processedAt      DateTime? @db.Timestamptz(3)
+  processingResult String?   @db.VarChar(300)
+
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([paymentId])
+  @@index([bookingId])
+  @@index([processedAt])
+  @@map("payment_events")
 }

@@ -8,7 +8,9 @@ import { AppModule } from './app.module';
 import type { AppConfig } from './config/env.config';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  // rawBody: the payment webhook signature is computed over the exact bytes
+  // sent, so a re-serialised body would never verify.
+  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
   const config = app.get(ConfigService<AppConfig, true>);
   const logger = new Logger('Bootstrap');
 

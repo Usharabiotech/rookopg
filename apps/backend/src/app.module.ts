@@ -9,12 +9,14 @@ import { PrismaModule } from './common/prisma/prisma.module';
 import { validateEnv } from './config/env.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { BookingModule } from './modules/booking/booking.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { IamModule } from './modules/iam/iam.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ListingModule } from './modules/listing/listing.module';
 import { MediaModule } from './modules/media/media.module';
 import { OrganisationModule } from './modules/organisation/organisation.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { PropertyModule } from './modules/property/property.module';
 import { ReferenceModule } from './modules/reference/reference.module';
 import { SearchModule } from './modules/search/search.module';
@@ -50,6 +52,8 @@ import { HealthController } from './health.controller';
     BillingModule,
     ListingModule,
     SearchModule,
+    PaymentsModule,
+    BookingModule,
   ],
   controllers: [HealthController],
   providers: [

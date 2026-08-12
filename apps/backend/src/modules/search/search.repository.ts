@@ -139,18 +139,26 @@ export class SearchRepository {
   }
 
   /**
-   * Beds with no active claim today, per property.
+   * Beds a tenant could actually take from a given date, per property.
    *
-   * Read from bed_allocations — the same table the exclusion constraint
-   * guards — so what a tenant is shown cannot disagree with what booking
-   * would allow.
+   * "Free" here means bookable, not merely empty tonight. A bed held for a
+   * move-in three weeks away is gone as far as a new tenant is concerned, so
+   * counting it as available would advertise a bed that booking then refuses
+   * — the precise failure this product exists to avoid.
+   *
+   * The predicate matches the one bookings use to pick a bed, and both read
+   * bed_allocations, the table the exclusion constraint guards. What a tenant
+   * is shown therefore cannot disagree with what booking would allow.
    */
-  async freeBedsByProperty(propertyIds: string[]): Promise<Map<string, Set<string>>> {
+  async freeBedsByProperty(
+    propertyIds: string[],
+    fromDate?: Date,
+  ): Promise<Map<string, Set<string>>> {
     const free = new Map<string, Set<string>>();
     if (propertyIds.length === 0) return free;
 
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    const from = fromDate ? new Date(fromDate) : new Date();
+    from.setUTCHours(0, 0, 0, 0);
 
     const [beds, taken] = await Promise.all([
       this.prisma.bed.findMany({
@@ -161,8 +169,9 @@ export class SearchRepository {
         where: {
           propertyId: { in: propertyIds },
           status: AllocationStatus.ACTIVE,
-          startDate: { lte: today },
-          OR: [{ endDate: null }, { endDate: { gt: today } }],
+          // Overlaps [from, ∞): open-ended, or ending after the move-in date.
+          // A bed freeing up on 15 September is available from 1 October.
+          OR: [{ endDate: null }, { endDate: { gt: from } }],
         },
         select: { bedId: true },
       }),

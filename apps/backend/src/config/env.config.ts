@@ -58,6 +58,26 @@ const envSchema = z.object({
 
   PLATFORM_COMMISSION_BPS: z.coerce.number().int().min(0).max(10_000).default(400),
   PLATFORM_CONVENIENCE_FEE_PAISE: z.coerce.number().int().min(0).default(2500),
+
+  /**
+   * `dev` fakes the gateway locally, signing its webhooks with the same HMAC
+   * scheme so signature checking and idempotency are genuinely exercised.
+   * `razorpay` is Razorpay Route: the tenant pays once and the split happens
+   * at source, so the platform never holds funds.
+   */
+  PAYMENT_GATEWAY: z.enum(['dev', 'razorpay']).default('dev'),
+  /** Signs development webhooks. Irrelevant when the driver is razorpay. */
+  DEV_WEBHOOK_SECRET: z.string().default('dev-webhook-secret'),
+
+  /** The key id is public by design and reaches the browser checkout. */
+  RAZORPAY_KEY_ID: z.string().optional(),
+  /** Server only. Never logged, never sent to a client. */
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  /** How long a bed is held during checkout (docs/02 decision 13). */
+  BOOKING_HOLD_MINUTES: z.coerce.number().int().positive().max(120).default(15),
+  /** Hours an owner has to accept a booking before it auto-cancels. */
+  BOOKING_APPROVAL_HOURS: z.coerce.number().int().positive().max(168).default(12),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
@@ -76,6 +96,23 @@ export function validateEnv(raw: Record<string, unknown>): AppConfig {
 
   if (config.NODE_ENV === 'production' && config.CORS_ORIGINS.length === 0) {
     throw new Error('CORS_ORIGINS must be set in production');
+  }
+
+  if (config.PAYMENT_GATEWAY === 'razorpay') {
+    const missing = (['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'] as const).filter(
+      (key) => !config[key],
+    );
+    if (missing.length > 0) {
+      throw new Error(`PAYMENT_GATEWAY=razorpay requires: ${missing.join(', ')}`);
+    }
+  }
+
+  // A fake gateway in production would take bookings for money that never
+  // moved. Refuse to start rather than discover that from a tenant.
+  if (config.NODE_ENV === 'production' && config.PAYMENT_GATEWAY === 'dev') {
+    throw new Error(
+      'PAYMENT_GATEWAY=dev cannot be used in production — bookings would be confirmed without any payment.',
+    );
   }
 
   if (config.STORAGE_DRIVER === 's3') {
