@@ -1,8 +1,15 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { api, isApiError } from '@/lib/api';
+import { ThemeToggle, type Theme } from '@/components/theme-toggle';
 import type { AuthUser } from '@/lib/types';
 import { signOutAction } from './actions';
 import { NavLinks } from './nav-links';
+
+async function readTheme(): Promise<Theme> {
+  const value = (await cookies()).get('pg_theme')?.value;
+  return value === 'dark' || value === 'light' ? value : 'system';
+}
 
 async function loadUser(): Promise<AuthUser> {
   try {
@@ -32,7 +39,7 @@ function Wordmark({ onRail }: { onRail?: boolean }) {
 }
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
-  const user = await loadUser();
+  const [user, theme] = await Promise.all([loadUser(), readTheme()]);
   const org = user.memberships[0];
   const isOwner = org?.role === 'OWNER';
 
@@ -62,14 +69,17 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           ) : null}
         </div>
 
-        <form action={signOutAction}>
-          <button
-            type="submit"
-            className="pressable min-h-11 w-full rounded-lg px-3 text-left text-sm text-ink-400 hover:bg-white/5 hover:text-white"
-          >
-            Sign out
-          </button>
-        </form>
+        <div className="space-y-3">
+          <ThemeToggle initial={theme} variant="rail" />
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              className="pressable min-h-11 w-full rounded-lg px-3 text-left text-sm text-ink-400 hover:bg-white/5 hover:text-white"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-col">
@@ -99,14 +109,17 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
               )}
             </a>
 
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="min-h-11 rounded-lg px-3 text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
-              >
-                Sign out
-              </button>
-            </form>
+            <div className="flex shrink-0 items-center gap-2">
+              <ThemeToggle initial={theme} variant="bar" />
+              <form action={signOutAction}>
+                <button
+                  type="submit"
+                  className="min-h-11 rounded-lg px-2 text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
+                  Sign out
+                </button>
+              </form>
+            </div>
           </div>
 
           {org ? (

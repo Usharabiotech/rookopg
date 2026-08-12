@@ -34,9 +34,14 @@ export async function bulkCreateRoomsAction(
     floors.push({
       floor: String(formData.get(`floor-${index}-floor`) ?? ''),
       roomCount,
+      // A floor commonly mixes sharing types, so several sets can share a
+      // floor. The start number is what keeps their room numbers from
+      // colliding.
+      startNumber: String(formData.get(`floor-${index}-start`) ?? '').trim() || undefined,
       sharingType: String(formData.get(`floor-${index}-sharing`) ?? ''),
       sharingCapacity: String(formData.get(`floor-${index}-capacity`) ?? '').trim() || undefined,
       gender: String(formData.get(`floor-${index}-gender`) ?? ''),
+      saleMode: String(formData.get(`floor-${index}-salemode`) ?? 'PER_BED'),
       rentRupees: String(formData.get(`floor-${index}-rent`) ?? ''),
       depositRupees: String(formData.get(`floor-${index}-deposit`) ?? '').trim() || undefined,
       hasAc: formData.get(`floor-${index}-ac`) === 'on',
@@ -61,11 +66,13 @@ export async function bulkCreateRoomsAction(
         floors: parsed.data.map((floor) => ({
           floor: floor.floor,
           roomCount: floor.roomCount,
+          ...(floor.startNumber !== undefined ? { startNumber: floor.startNumber } : {}),
           sharingType: floor.sharingType,
           ...(floor.sharingCapacity !== undefined
             ? { sharingCapacity: floor.sharingCapacity }
             : {}),
           gender: floor.gender,
+          saleMode: floor.saleMode,
           baseRentPaise: rupeesToPaise(floor.rentRupees),
           ...(floor.depositRupees
             ? { depositPaise: rupeesToPaise(floor.depositRupees) }

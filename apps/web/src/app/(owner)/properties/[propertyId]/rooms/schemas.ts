@@ -11,9 +11,13 @@ export const bulkFloorSchema = z
   .object({
     floor: numeric('Floor', -2, 60),
     roomCount: numeric('Room count', 1, 60),
+    /** Where this set's numbering begins, so two sets on one floor do not
+     *  produce the same room number. */
+    startNumber: numeric('First room number', 1, 99).optional(),
     sharingType: z.enum(['SINGLE', 'DOUBLE', 'TRIPLE', 'QUAD', 'DORMITORY']),
     sharingCapacity: numeric('Beds per room', 1, 40).optional(),
     gender: z.enum(['MEN', 'WOMEN', 'ANY']),
+    saleMode: z.enum(['PER_BED', 'WHOLE_ROOM']).default('PER_BED'),
     rentRupees: z
       .string()
       .trim()

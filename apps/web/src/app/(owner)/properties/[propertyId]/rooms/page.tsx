@@ -34,8 +34,9 @@ export default async function RoomsSetupPage({ params }: { params: Params }) {
       </Link>
 
       <PageHeader
+        eyebrow={property.name}
         title="Set up rooms"
-        subtitle="Describe each floor once. Rooms are numbered automatically (101, 102…) and every room gets its beds."
+        subtitle="Add a set for each group of identical rooms. A floor can hold several sets — three 2-sharing rooms and three 3-sharing rooms is normal. Beds are created with each room."
       />
 
       <BulkRoomForm propertyId={propertyId} defaultGender={defaultGender} />

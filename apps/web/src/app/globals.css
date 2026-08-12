@@ -56,7 +56,16 @@
   --radius-card: 0.75rem;
 }
 
-/* Light is the default: this tool is used in daylight, in a stairwell. */
+/*
+  Three theme states, in this order of precedence:
+    1. data-theme="dark" / "light"  — the person chose, and their choice wins
+    2. prefers-color-scheme          — no explicit choice, follow the device
+    3. light                         — the fallback
+
+  Every token has a value on bare :root, so nothing is defined only inside a
+  media query. A token that exists in one branch and not the other is how
+  themes end up with invisible text.
+*/
 :root {
   --bg: var(--color-paper-50);
   --bg-deep: var(--color-paper-100);
@@ -70,10 +79,16 @@
   --rail-text: var(--color-ink-200);
   --rail-active: #ffffff;
   --shadow-card: 0 1px 2px rgb(16 26 39 / 0.06), 0 1px 3px rgb(16 26 39 / 0.04);
+  color-scheme: light;
+}
+
+@mixin-placeholder {
+  /* Tailwind v4 has no @mixin; the dark values are written twice below on
+     purpose so each selector stands alone. */
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: var(--color-ink-950);
     --bg-deep: #070d15;
     --surface: var(--color-ink-900);
@@ -86,7 +101,24 @@
     --rail-text: #8fa0b8;
     --rail-active: #ffffff;
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: var(--color-ink-950);
+  --bg-deep: #070d15;
+  --surface: var(--color-ink-900);
+  --surface-raised: var(--color-ink-800);
+  --border: #1d2b3d;
+  --border-strong: #2b3d54;
+  --text: var(--color-paper-50);
+  --text-muted: #8fa0b8;
+  --rail: #070d15;
+  --rail-text: #8fa0b8;
+  --rail-active: #ffffff;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  color-scheme: dark;
 }
 
 html {
