@@ -315,6 +315,51 @@ export interface LocalityCount {
   count: number;
 }
 
+export interface BookingPrice {
+  rentPaise: number;
+  depositPaise: number;
+  convenienceFeePaise: number;
+  totalPayablePaise: number;
+}
+
+export interface Booking {
+  id: string;
+  status:
+    | 'DRAFT'
+    | 'HELD'
+    | 'PENDING_PAYMENT'
+    | 'PAYMENT_FAILED'
+    | 'PENDING_APPROVAL'
+    | 'CONFIRMED'
+    | 'CHECKED_IN'
+    | 'CANCELLED'
+    | 'REJECTED'
+    | 'EXPIRED'
+    | 'NO_SHOW';
+  propertyName: string;
+  localityName: string;
+  listingSlug?: string;
+  roomCode: string;
+  bedCode: string;
+  sharingType: string;
+  moveInDate: string;
+  price: BookingPrice;
+  orderId?: string;
+  holdExpiresAt?: string;
+  approvalExpiresAt?: string;
+  tenantName?: string;
+  tenantPhone?: string;
+  createdAt: string;
+}
+
+export interface Checkout {
+  booking: Booking;
+  orderId: string;
+  amountPaise: number;
+  publicKey?: string;
+  provider: string;
+}
+
 export interface ApiErrorBody {
   statusCode: number;
   code: string;

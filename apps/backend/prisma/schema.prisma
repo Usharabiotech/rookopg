@@ -298,6 +298,13 @@ model Property {
   /// Null means "anchor to each tenant's move-in date" (docs/02 decision 9).
   defaultRentCycleDay Int? @db.SmallInt
 
+  /// Whether a paid booking confirms straight away.
+  ///
+  /// False means the owner must accept it first. Still undecided as a product
+  /// default (docs/02 question on confirmation) — kept as a per-property flag
+  /// so switching is a default change rather than a rebuild.
+  autoConfirmBookings Boolean @default(false)
+
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt DateTime  @updatedAt @db.Timestamptz(3)
   deletedAt DateTime? @db.Timestamptz(3)

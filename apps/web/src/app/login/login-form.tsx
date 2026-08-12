@@ -19,7 +19,7 @@ function SubmitButton({ children }: { children: string }) {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [otpState, requestOtp] = useActionState<RequestOtpState, FormData>(requestOtpAction, {
     status: 'idle',
   });
@@ -31,6 +31,7 @@ export function LoginForm() {
     return (
       <form action={verifyOtp} className="space-y-4">
         <input type="hidden" name="challengeId" value={otpState.challengeId} />
+        {next ? <input type="hidden" name="next" value={next} /> : null}
 
         <p className="text-sm text-[var(--text-muted)]">
           We sent a 6-digit code to{' '}

@@ -17,6 +17,7 @@ const BOOKING_INCLUDE = {
       id: true,
       name: true,
       orgId: true,
+      autoConfirmBookings: true,
       locality: { select: { name: true } },
       listing: { select: { slug: true } },
       organisation: {
@@ -248,6 +249,8 @@ export class BookingRepository {
     gatewayPaymentId: string;
     gatewayOrderId: string;
     approvalExpiresAt: Date;
+    /// When the property confirms automatically, payment is the last step.
+    autoConfirm: boolean;
   }): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       /*
@@ -283,13 +286,18 @@ export class BookingRepository {
         data: { kind: AllocationKind.BOOKING, expiresAt: null },
       });
 
+      const nextStatus = input.autoConfirm
+        ? BookingStatus.CONFIRMED
+        : BookingStatus.PENDING_APPROVAL;
+
       await tx.booking.update({
         where: { id: input.bookingId },
         data: {
-          status: BookingStatus.PENDING_APPROVAL,
+          status: nextStatus,
           paidAt: new Date(),
           holdExpiresAt: null,
-          approvalExpiresAt: input.approvalExpiresAt,
+          // Only meaningful while the owner still has to answer.
+          approvalExpiresAt: input.autoConfirm ? null : input.approvalExpiresAt,
         },
       });
 
@@ -297,8 +305,10 @@ export class BookingRepository {
         data: {
           bookingId: input.bookingId,
           fromStatus: BookingStatus.PENDING_PAYMENT,
-          toStatus: BookingStatus.PENDING_APPROVAL,
-          reason: 'Payment received',
+          toStatus: nextStatus,
+          reason: input.autoConfirm
+            ? 'Payment received; property confirms automatically'
+            : 'Payment received',
         },
       });
     });

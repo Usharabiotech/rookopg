@@ -8,8 +8,18 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default async function LoginPage() {
-  if (await isSignedIn()) redirect('/dashboard');
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const raw = Array.isArray(params['next']) ? params['next'][0] : params['next'];
+  // Only same-site paths: an open redirect here would let someone send a
+  // tenant to a lookalike page after a genuine sign-in.
+  const next = raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : undefined;
+
+  if (await isSignedIn()) redirect((next ?? '/dashboard') as never);
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-2">
@@ -86,7 +96,7 @@ export default async function LoginPage() {
           </p>
 
           <div className="mt-7">
-            <LoginForm />
+            <LoginForm {...(next ? { next } : {})} />
           </div>
 
           <p className="mt-8 text-xs text-[var(--text-muted)]">

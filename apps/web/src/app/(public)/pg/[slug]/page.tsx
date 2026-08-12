@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getListing } from '@/lib/public-api';
-import { Badge, Card } from '@/components/ui';
+import { Badge, Card, LinkButton } from '@/components/ui';
 import { genderLabel, rupeesShort, sharingLabel } from '@/lib/format';
 import type { PublicListing } from '@/lib/types';
 
@@ -204,12 +204,22 @@ export default async function ListingPage({ params }: { params: Params }) {
                       )}
                     </p>
                   </div>
-                  <p className="figure text-lg font-semibold">
-                    {rupeesShort(option.fromRentPaise)}
-                    <span className="ml-1 font-sans text-xs font-normal text-[var(--text-muted)]">
-                      /month
-                    </span>
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="figure text-lg font-semibold">
+                      {rupeesShort(option.fromRentPaise)}
+                      <span className="ml-1 font-sans text-xs font-normal text-[var(--text-muted)]">
+                        /month
+                      </span>
+                    </p>
+                    {option.freeBeds > 0 ? (
+                      <LinkButton
+                        href={`/pg/${slug}/book?sharing=${option.sharingType}`}
+                        className="min-h-9 px-3 text-xs"
+                      >
+                        Book
+                      </LinkButton>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -260,14 +270,16 @@ export default async function ListingPage({ params }: { params: Params }) {
                 {listing.mealsIncluded ? <Badge>Meals: {listing.mealsIncluded}</Badge> : null}
               </div>
 
-              {/*
-                Booking is the next thing to build. Saying so plainly beats a
-                button that does nothing, and beats pretending the feature
-                exists.
-              */}
-              <div className="mt-5 rounded-lg border border-dashed border-[var(--border-strong)] p-3 text-sm text-[var(--text-muted)]">
-                Online booking is coming shortly. For now, ask the owner to hold a bed for you.
-              </div>
+              {listing.freeBeds > 0 ? (
+                <div className="mt-5">
+                  <LinkButton href={`/pg/${slug}/book`} fullWidth>
+                    Book a bed
+                  </LinkButton>
+                  <p className="mt-2 text-center text-xs text-[var(--text-muted)]">
+                    First month&apos;s rent and deposit, paid now. The bed is held while you pay.
+                  </p>
+                </div>
+              ) : null}
 
               {listing.availabilityConfirmedAt ? (
                 <p className="mt-4 text-xs text-[var(--text-muted)]">

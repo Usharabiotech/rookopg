@@ -74,6 +74,10 @@ export async function verifyOtpAction(
     };
   }
 
+  const raw = String(formData.get('next') ?? '');
+  // Same-site only, again: never trust a redirect target off a form field.
+  const next = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/dashboard';
+
   // Outside the try: redirect works by throwing, and must not be caught above.
-  redirect('/dashboard');
+  redirect(next as never);
 }

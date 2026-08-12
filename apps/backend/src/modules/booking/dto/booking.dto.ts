@@ -57,6 +57,7 @@ export class BookingDto {
   @ApiProperty({ example: 'TRIPLE' }) sharingType!: string;
   @ApiProperty({ example: '2026-09-01' }) moveInDate!: string;
   @ApiProperty({ type: BookingPriceDto }) price!: BookingPriceDto;
+  @ApiPropertyOptional({ description: 'Gateway order to pay against' }) orderId?: string;
   @ApiPropertyOptional({ description: 'When the held bed is released' }) holdExpiresAt?: string;
   @ApiPropertyOptional({ description: 'When the owner must have responded by' })
   approvalExpiresAt?: string;

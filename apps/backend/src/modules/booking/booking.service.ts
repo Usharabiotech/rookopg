@@ -241,9 +241,13 @@ export class BookingService {
       gatewayPaymentId: event.paymentId ?? event.eventId,
       gatewayOrderId: event.orderId ?? '',
       approvalExpiresAt: new Date(Date.now() + this.approvalHours * 3_600_000),
+      autoConfirm: booking.property.autoConfirmBookings,
     });
 
-    await this.repository.markEventProcessed(event.eventId, 'booking awaiting owner approval');
+    const outcome = booking.property.autoConfirmBookings
+      ? 'booking confirmed'
+      : 'booking awaiting owner approval';
+    await this.repository.markEventProcessed(event.eventId, outcome);
     return 'paid';
   }
 
@@ -412,6 +416,7 @@ export class BookingService {
         convenienceFeePaise: booking.convenienceFeePaise,
         totalPayablePaise: booking.payableNowPaise + booking.convenienceFeePaise,
       },
+      ...(booking.gatewayOrderId ? { orderId: booking.gatewayOrderId } : {}),
       ...(booking.holdExpiresAt ? { holdExpiresAt: booking.holdExpiresAt.toISOString() } : {}),
       ...(booking.approvalExpiresAt
         ? { approvalExpiresAt: booking.approvalExpiresAt.toISOString() }
