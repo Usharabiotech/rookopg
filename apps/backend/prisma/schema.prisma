@@ -61,6 +61,9 @@ model User {
   checkinTokensUsed      CheckinToken[]         @relation("CheckinTokenUsedBy")
   mediaUploaded          PropertyMedia[]        @relation("MediaUploadedBy")
   auditEntries           AuditLog[]             @relation("AuditActor")
+  invoices               Invoice[]              @relation("InvoiceTenant")
+  payments               Payment[]              @relation("PaymentTenant")
+  paymentsRecorded       Payment[]              @relation("PaymentRecordedBy")
 
   @@index([status])
   @@map("users")
@@ -106,6 +109,8 @@ model Organisation {
   bankAccounts BankAccount[]
   bookings     Booking[]
   tenancies    Tenancy[]
+  invoices     Invoice[]
+  payments     Payment[]
 
   @@index([status])
   @@map("organisations")
@@ -313,6 +318,8 @@ model Property {
   visits         Visit[]
   checkinEvents  CheckinEvent[]
   scopedMembers  OrgMembershipProperty[]
+  invoices       Invoice[]
+  payments       Payment[]
 
   /// Anchors the composite foreign key on rooms, so a room can never claim
   /// to belong to a property its parent does not.
@@ -882,6 +889,8 @@ model Tenancy {
   allocations   BedAllocation[]
   statusHistory TenancyStatusHistory[]
   checkinEvents CheckinEvent[]
+  invoices      Invoice[]
+  payments      Payment[]
 
   @@index([orgId, status])
   @@index([propertyId, status])
@@ -993,4 +1002,163 @@ model AuditLog {
   @@index([orgId, occurredAt])
   @@index([actorId, occurredAt])
   @@map("audit_log")
+}
+
+// ============================================================================
+// Money — invoices and payments
+//
+// Four concepts, never conflated (docs/04 §A.5):
+//   Invoice     what is owed
+//   Payment     what actually arrived, by any method
+//   Allocation  which payment settles which invoice, and how much
+//   (Payment events arrive with the gateway, in the next milestone.)
+//
+// Balances are always derived. A stored "amount paid" is a second source of
+// truth, and the two disagree at the worst possible moment.
+// ============================================================================
+
+enum InvoiceKind {
+  RENT
+  DEPOSIT
+  ONE_OFF
+  UTILITY
+  DAMAGE
+}
+
+enum InvoiceStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  VOID
+  WRITTEN_OFF
+}
+
+model Invoice {
+  id           String @id @default(uuid(7)) @db.Uuid
+  orgId        String @db.Uuid
+  propertyId   String @db.Uuid
+  tenancyId    String @db.Uuid
+  tenantUserId String @db.Uuid
+
+  kind        InvoiceKind   @default(RENT)
+  status      InvoiceStatus @default(OPEN)
+
+  /// Inclusive first day covered.
+  periodStart DateTime @db.Date
+  /// Exclusive last day — the next period's first day.
+  periodEnd   DateTime @db.Date
+  dueDate     DateTime @db.Date
+
+  amountPaise Int
+  /// True when the period is shorter than a whole cycle.
+  isProRata   Boolean @default(false)
+  description String? @db.VarChar(200)
+
+  voidedAt   DateTime? @db.Timestamptz(3)
+  voidReason String?   @db.VarChar(300)
+
+  /// Stable per period, so re-running generation cannot bill twice.
+  /// See the unique index below — that constraint is the actual guarantee.
+  cycleKey String @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  organisation Organisation        @relation(fields: [orgId], references: [id])
+  property     Property            @relation(fields: [propertyId], references: [id])
+  tenancy      Tenancy             @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  tenant       User                @relation("InvoiceTenant", fields: [tenantUserId], references: [id])
+  allocations  PaymentAllocation[]
+
+  /// Idempotent generation: the nightly job re-runs after a crash or a
+  /// redeploy, and this is what stops a second invoice for the same month.
+  @@unique([tenancyId, kind, cycleKey])
+  @@index([orgId, status, dueDate])
+  @@index([propertyId, status, dueDate])
+  @@index([tenantUserId, status, dueDate])
+  @@index([dueDate, status])
+  @@map("invoices")
+}
+
+enum PaymentMethod {
+  RAZORPAY_UPI
+  CASH
+  UPI_DIRECT
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+/// Money that actually arrived. Cash handed to a warden and a UPI transfer
+/// are peers here — the ledger does not care how it came, only that it did
+/// and who says so.
+model Payment {
+  id           String @id @default(uuid(7)) @db.Uuid
+  orgId        String @db.Uuid
+  propertyId   String @db.Uuid
+  tenancyId    String? @db.Uuid
+  tenantUserId String  @db.Uuid
+
+  method PaymentMethod
+  status PaymentStatus @default(CAPTURED)
+
+  amountPaise Int
+  currency    String @default("INR") @db.VarChar(3)
+
+  /// Razorpay identifiers, empty for cash.
+  gatewayOrderId   String? @unique @db.VarChar(64)
+  gatewayPaymentId String? @unique @db.VarChar(64)
+
+  /// Who says the money arrived. Required for anything taken off-platform.
+  recordedByUserId String?  @db.Uuid
+  reference        String?  @db.VarChar(120)
+  note             String?  @db.VarChar(300)
+  receivedAt       DateTime @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  organisation Organisation        @relation(fields: [orgId], references: [id])
+  property     Property            @relation(fields: [propertyId], references: [id])
+  tenancy      Tenancy?            @relation(fields: [tenancyId], references: [id])
+  tenant       User                @relation("PaymentTenant", fields: [tenantUserId], references: [id])
+  recordedBy   User?               @relation("PaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  allocations  PaymentAllocation[]
+
+  @@index([orgId, receivedAt])
+  @@index([propertyId, receivedAt])
+  @@index([tenantUserId, receivedAt])
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+/// The many-to-many between money and what it settles.
+///
+/// One payment can cover rent and deposit together; one invoice can take
+/// several part-payments, which is normal in this market. Anything
+/// unallocated is a credit sitting against the tenant.
+model PaymentAllocation {
+  id        String @id @default(uuid(7)) @db.Uuid
+  paymentId String @db.Uuid
+  invoiceId String @db.Uuid
+
+  amountPaise Int
+
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  /// One payment settles a given invoice once; a second part-payment is a
+  /// second payment row, not a second allocation on the same pair.
+  @@unique([paymentId, invoiceId])
+  @@index([invoiceId])
+  @@map("payment_allocations")
 }

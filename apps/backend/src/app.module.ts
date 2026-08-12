@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { CryptoModule } from './common/crypto/crypto.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { validateEnv } from './config/env.config';
 import { AuthModule } from './modules/auth/auth.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { IamModule } from './modules/iam/iam.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
@@ -29,6 +31,8 @@ import { HealthController } from './health.controller';
     ThrottlerModule.forRoot({
       throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
     }),
+    // Drives the nightly rent invoicing run.
+    ScheduleModule.forRoot(),
     PrismaModule,
     CryptoModule,
     IamModule,
@@ -41,6 +45,7 @@ import { HealthController } from './health.controller';
     StorageModule,
     MediaModule,
     TenancyModule,
+    BillingModule,
   ],
   controllers: [HealthController],
   providers: [
