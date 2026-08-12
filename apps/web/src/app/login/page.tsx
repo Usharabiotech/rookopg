@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LoginPage() {
-  if (await isSignedIn()) redirect('/');
+  if (await isSignedIn()) redirect('/dashboard');
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-2">

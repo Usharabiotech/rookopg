@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const LINKS = [
-  { href: '/', label: 'Properties' },
-  { href: '/staff', label: 'Staff' },
+  { href: '/dashboard', label: 'Properties' },
+  { href: '/dashboard/staff', label: 'Staff' },
 ] as const;
 
 export function NavLinks({
@@ -16,10 +16,11 @@ export function NavLinks({
   showStaff: boolean;
 }) {
   const pathname = usePathname();
-  const links = LINKS.filter((link) => link.href !== '/staff' || showStaff);
+  const links = LINKS.filter((link) => link.href !== '/dashboard/staff' || showStaff);
 
+  // The dashboard root would otherwise match every page beneath it.
   const isActive = (href: string) =>
-    href === '/' ? pathname === '/' : pathname.startsWith(href);
+    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
 
   if (variant === 'rail') {
     return (

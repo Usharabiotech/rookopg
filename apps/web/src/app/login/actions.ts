@@ -75,5 +75,5 @@ export async function verifyOtpAction(
   }
 
   // Outside the try: redirect works by throwing, and must not be caught above.
-  redirect('/');
+  redirect('/dashboard');
 }

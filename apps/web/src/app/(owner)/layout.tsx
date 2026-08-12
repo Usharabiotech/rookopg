@@ -51,7 +51,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
       */}
       <aside className="hidden bg-[var(--rail)] lg:flex lg:flex-col lg:justify-between lg:p-5">
         <div>
-          <a href="/" className="block">
+          <a href="/dashboard" className="block">
             <Wordmark onRail />
           </a>
 
@@ -86,7 +86,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         {/* Mobile bar. The rail collapses to this below lg. */}
         <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur lg:hidden">
           <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <a href="/" className="min-w-0">
+            <a href="/dashboard" className="min-w-0">
               {org ? (
                 <span className="flex items-center gap-2.5">
                   <span

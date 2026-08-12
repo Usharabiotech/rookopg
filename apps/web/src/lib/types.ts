@@ -246,6 +246,75 @@ export interface Media {
   thumbUrl: string;
 }
 
+// ---------------------------------------------------------------------------
+// Public marketplace
+// ---------------------------------------------------------------------------
+
+export interface SharingOption {
+  sharingType: string;
+  fromRentPaise: number;
+  freeBeds: number;
+  hasAc: boolean;
+}
+
+export interface ListingCard {
+  slug: string;
+  name: string;
+  localityName: string;
+  genderPolicy: 'MEN' | 'WOMEN' | 'CO_LIVING';
+  propertyType: string;
+  headline?: string;
+  fromRentPaise: number;
+  freeBeds: number;
+  totalBeds: number;
+  coverPhotoId?: string;
+  amenityCodes: string[];
+  foodType?: string;
+  sharingOptions: SharingOption[];
+}
+
+export interface PublicRoom {
+  sharingType: string;
+  rentPaise: number;
+  depositPaise: number;
+  freeBeds: number;
+  totalBeds: number;
+  hasAc: boolean;
+  hasAttachedBath: boolean;
+  gender: string;
+}
+
+export interface PublicListing extends ListingCard {
+  propertyId: string;
+  description?: string;
+  addressLine1: string;
+  landmark?: string;
+  pincode: string;
+  latitude?: number;
+  longitude?: number;
+  photoIds: string[];
+  rooms: PublicRoom[];
+  mealsIncluded?: string;
+  gateClosingTime?: string;
+  visitorsAllowed: boolean;
+  houseRules?: string;
+  availabilityConfirmedAt?: string;
+}
+
+export interface SearchResults {
+  results: ListingCard[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface LocalityCount {
+  id: string;
+  name: string;
+  slug: string;
+  count: number;
+}
+
 export interface ApiErrorBody {
   statusCode: number;
   code: string;

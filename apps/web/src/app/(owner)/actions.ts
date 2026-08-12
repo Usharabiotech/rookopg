@@ -54,5 +54,5 @@ export async function createOrganisationAction(
   }
 
   revalidatePath('/', 'layout');
-  redirect('/');
+  redirect('/dashboard');
 }
