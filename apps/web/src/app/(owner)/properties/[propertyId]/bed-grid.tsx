@@ -1,103 +1,156 @@
 import { rupeesShort, sharingLabel } from '@/lib/format';
-import type { Room } from '@/lib/types';
+import type { Bed, Room } from '@/lib/types';
 
-/**
- * The occupancy board.
- *
- * This is the screen an owner opens every morning, so it has to answer "who
- * is free tonight" in one glance: colour carries the signal, but every tile
- * also has a text label and title so it does not depend on colour alone.
- */
+/*
+  The occupancy board.
 
-function BedTile({ code, state }: { code: string; state: 'free' | 'taken' | 'blocked' }) {
-  const styles = {
-    free: 'border-teal-600/40 bg-teal-50 text-teal-700 dark:bg-teal-900 dark:text-teal-100',
-    taken: 'border-transparent bg-teal-600 text-white',
-    blocked: 'border-sand-300 bg-sand-200 text-ink-400 line-through dark:border-ink-600 dark:bg-ink-800',
-  } as const;
+  This is the screen an owner opens every morning, so it answers one question
+  first: who is free tonight. It is drawn as the rack of key fobs behind a
+  warden's desk, because that is the thing it replaces — a tag on the hook is
+  a free bed, a tag missing is someone living there.
 
-  const labels = { free: 'free', taken: 'occupied', blocked: 'out of service' } as const;
+  Colour is never the only signal: every tag carries its code, a title, and
+  screen-reader text.
+*/
 
+type TagState = 'free' | 'taken' | 'blocked';
+
+function stateOf(bed: Bed): TagState {
+  if (bed.status !== 'ACTIVE') return 'blocked';
+  return bed.occupied ? 'taken' : 'free';
+}
+
+const TAG_STYLES: Record<TagState, string> = {
+  free: 'border-moss-500/40 bg-moss-100 text-moss-700',
+  taken: 'border-brass-600 bg-brass-500 text-ink-950',
+  blocked:
+    'border-dashed border-[var(--border-strong)] bg-transparent text-[var(--text-muted)] line-through',
+};
+
+const TAG_LABELS: Record<TagState, string> = {
+  free: 'free',
+  taken: 'occupied',
+  blocked: 'out of service',
+};
+
+function KeyTag({ bed }: { bed: Bed }) {
+  const state = stateOf(bed);
   return (
     <span
-      title={`Bed ${code} — ${labels[state]}`}
-      className={`inline-flex size-9 items-center justify-center rounded-lg border text-xs font-bold ${styles[state]}`}
+      title={`Bed ${bed.code} — ${TAG_LABELS[state]}`}
+      className={`figure relative inline-flex h-10 w-9 items-end justify-center rounded-md border pb-1.5 text-xs font-semibold ${TAG_STYLES[state]}`}
     >
-      {code}
-      <span className="sr-only"> {labels[state]}</span>
+      {/* The hole the fob hangs by. Small, and the whole reason this reads as
+          a key rather than a chip. */}
+      <span
+        aria-hidden="true"
+        className={
+          'absolute left-1/2 top-1.5 size-1.5 -translate-x-1/2 rounded-full ' +
+          (state === 'taken' ? 'bg-ink-950/40' : 'bg-[var(--border-strong)]')
+        }
+      />
+      {bed.code}
+      <span className="sr-only"> {TAG_LABELS[state]}</span>
     </span>
   );
 }
 
 function RoomRow({ room }: { room: Room }) {
-  const free = room.beds.filter((bed) => bed.status === 'ACTIVE' && !bed.occupied).length;
+  const free = room.beds.filter((bed) => stateOf(bed) === 'free').length;
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--border)] py-3 last:border-0">
-      <div className="w-28 shrink-0">
-        <p className="font-semibold">
-          Room {room.code}
-          {room.hasAc ? <span className="ml-1 text-xs font-normal text-teal-600">AC</span> : null}
+    <li className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-[var(--border)] py-3.5 first:border-t-0">
+      <div className="w-32 shrink-0">
+        <p className="figure text-sm font-semibold">
+          {room.code}
+          {room.hasAc ? (
+            <span className="ml-1.5 font-sans text-[10px] font-medium uppercase tracking-wide text-brass-600">
+              AC
+            </span>
+          ) : null}
         </p>
-        <p className="text-xs text-[var(--text-muted)]">
+        <p className="mt-0.5 text-xs text-[var(--text-muted)]">
           {sharingLabel(room.sharingType)} · {rupeesShort(room.baseRentPaise)}
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="rack flex flex-wrap gap-1.5">
         {room.beds.map((bed) => (
-          <BedTile
-            key={bed.id}
-            code={bed.code}
-            state={bed.status !== 'ACTIVE' ? 'blocked' : bed.occupied ? 'taken' : 'free'}
-          />
+          <KeyTag key={bed.id} bed={bed} />
         ))}
       </div>
 
-      <p className="tnum ml-auto text-xs font-medium text-[var(--text-muted)]">
-        {free > 0 ? `${free} free` : 'Full'}
+      <p
+        className={
+          'figure ml-auto text-xs font-medium ' +
+          (free > 0 ? 'text-moss-600' : 'text-[var(--text-muted)]')
+        }
+      >
+        {free > 0 ? `${free} free` : 'full'}
       </p>
     </li>
   );
 }
 
 export function BedGrid({ rooms }: { rooms: Room[] }) {
-  const byFloor = rooms.reduce<Map<number, Room[]>>((acc, room) => {
+  const byFloor = new Map<number, Room[]>();
+  for (const room of rooms) {
     const floor = room.floor ?? 0;
-    const list = acc.get(floor) ?? [];
-    list.push(room);
-    acc.set(floor, list);
-    return acc;
-  }, new Map());
-
+    byFloor.set(floor, [...(byFloor.get(floor) ?? []), room]);
+  }
   const floors = [...byFloor.entries()].sort(([a], [b]) => a - b);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--text-muted)]">
+    <div>
+      <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--text-muted)]">
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded border border-teal-600/40 bg-teal-50" /> free
+          <span className="size-3 rounded-sm border border-moss-500/40 bg-moss-100" /> free
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-teal-600" /> occupied
+          <span className="size-3 rounded-sm border border-brass-600 bg-brass-500" /> occupied
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-3 rounded bg-sand-200" /> out of service
+          <span className="size-3 rounded-sm border border-dashed border-[var(--border-strong)]" />{' '}
+          out of service
         </span>
       </div>
 
-      {floors.map(([floor, floorRooms]) => (
-        <section key={floor}>
-          <h3 className="mb-1 text-sm font-semibold">
-            {floor === 0 ? 'Ground floor' : `Floor ${floor}`}
-          </h3>
-          <ul>
-            {floorRooms.map((room) => (
-              <RoomRow key={room.id} room={room} />
-            ))}
-          </ul>
-        </section>
-      ))}
+      <div className="space-y-7">
+        {floors.map(([floor, floorRooms]) => (
+          <section key={floor} className="relative">
+            {/*
+              The floor number set large and faint, running down the left.
+              A building is stacked, and the board should read that way — this
+              is structure, not ornament.
+            */}
+            <div className="flex items-start gap-4">
+              <div className="hidden w-14 shrink-0 pt-1 sm:block">
+                <span
+                  aria-hidden="true"
+                  className="display block text-4xl leading-none text-[var(--border-strong)]"
+                >
+                  {floor === 0 ? 'G' : floor}
+                </span>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <h3 className="eyebrow mb-1 sm:hidden">
+                  {floor === 0 ? 'Ground floor' : `Floor ${floor}`}
+                </h3>
+                <h3 className="eyebrow mb-1 hidden sm:block">
+                  {floor === 0 ? 'Ground floor' : `Floor ${floor}`} ·{' '}
+                  {floorRooms.reduce((n, room) => n + room.beds.length, 0)} beds
+                </h3>
+                <ul>
+                  {floorRooms.map((room) => (
+                    <RoomRow key={room.id} room={room} />
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

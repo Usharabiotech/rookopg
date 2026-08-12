@@ -40,7 +40,7 @@ function MemberRow({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={isOwner ? 'info' : 'neutral'}>{isOwner ? 'Owner' : 'Manager'}</Badge>
+          <Badge tone={isOwner ? 'taken' : 'neutral'}>{isOwner ? 'Owner' : 'Manager'}</Badge>
           {!member.active ? <Badge tone="danger">Removed</Badge> : null}
           {member.active && !member.hasSignedIn ? (
             <Badge tone="warning">Not signed in yet</Badge>

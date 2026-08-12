@@ -31,76 +31,113 @@ export default async function PropertyPage({ params }: { params: Params }) {
       api<Room[]>(`/properties/${propertyId}/rooms`),
     ]);
   } catch (error) {
-    // The API returns 404 for another organisation's property too, so this
-    // covers both "gone" and "not yours" without leaking which.
+    // The API answers 404 for another organisation's property too, so this
+    // covers "gone" and "not yours" without saying which.
     if (isApiError(error) && error.status === 404) notFound();
     throw error;
   }
 
-  const cheapest = rooms.length
-    ? Math.min(...rooms.map((room) => room.baseRentPaise))
-    : 0;
+  const cheapest = rooms.length ? Math.min(...rooms.map((room) => room.baseRentPaise)) : 0;
+  const taken = property.totalBeds - property.availableBeds;
 
   return (
     <>
       <Link
         href="/"
-        className="mb-3 inline-flex min-h-11 items-center text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
+        className="mb-4 inline-flex min-h-11 items-center text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
       >
         ← All properties
       </Link>
 
       <PageHeader
+        eyebrow={property.localityName}
         title={property.name}
-        subtitle={`${property.localityName} · ${genderLabel(property.genderPolicy)} · ${property.pincode}`}
+        subtitle={`${genderLabel(property.genderPolicy)} · ${property.addressLine1} · ${property.pincode}`}
         action={
-          <LinkButton href={`/properties/${property.id}/rooms`} variant="secondary">
+          <LinkButton
+            href={`/properties/${property.id}/rooms`}
+            variant={rooms.length === 0 ? 'primary' : 'secondary'}
+            className="shrink-0"
+          >
             {rooms.length === 0 ? 'Set up rooms' : 'Add rooms'}
           </LinkButton>
         }
       />
 
-      <Card className="mb-5">
-        <div className="flex flex-wrap gap-x-8 gap-y-4">
-          <Stat value={property.totalBeds} label="beds" />
-          <Stat value={property.availableBeds} label="free now" />
-          <Stat value={property.roomCount} label="rooms" />
-          {cheapest > 0 ? <Stat value={rupeesShort(cheapest)} label="from" /> : null}
-          <div className="ml-auto self-center">
-            <Badge tone={property.listingStatus === 'PUBLISHED' ? 'success' : 'neutral'}>
+      <div className="grid gap-5 lg:grid-cols-[1fr_16rem] lg:items-start">
+        <div className="order-2 lg:order-1">
+          <Card>
+            <h2 className="display mb-5 text-lg">Rooms and beds</h2>
+            {rooms.length === 0 ? (
+              <EmptyState
+                title="Nothing set up yet"
+                description="Describe the building floor by floor. Every room gets its beds automatically."
+                action={<LinkButton href={`/properties/${property.id}/rooms`}>Set up rooms</LinkButton>}
+              />
+            ) : (
+              <BedGrid rooms={rooms} />
+            )}
+          </Card>
+        </div>
+
+        {/* Summary rail: the numbers stay visible while the board scrolls. */}
+        <aside className="order-1 space-y-4 lg:order-2 lg:sticky lg:top-6">
+          <Card>
+            <div className="flex flex-wrap gap-x-7 gap-y-5 lg:grid lg:grid-cols-2">
+              <Stat value={property.availableBeds} label="free now" tone="free" />
+              <Stat value={taken} label="taken" tone="taken" />
+              <Stat value={property.totalBeds} label="beds" />
+              <Stat value={property.roomCount} label="rooms" />
+            </div>
+            {cheapest > 0 ? (
+              <p className="mt-5 border-t border-[var(--border)] pt-4 text-sm text-[var(--text-muted)]">
+                From <span className="figure font-semibold text-[var(--text)]">{rupeesShort(cheapest)}</span>{' '}
+                per bed
+              </p>
+            ) : null}
+          </Card>
+
+          <Card>
+            <p className="eyebrow mb-3">Listing</p>
+            <Badge tone={property.listingStatus === 'PUBLISHED' ? 'free' : 'neutral'}>
               {property.listingStatus === 'PUBLISHED' ? 'Live' : 'Not listed yet'}
             </Badge>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="mb-4 font-semibold">Rooms and beds</h2>
-        {rooms.length === 0 ? (
-          <EmptyState
-            title="No rooms yet"
-            description="Set up the building floor by floor — every room gets its beds automatically."
-            action={
-              <LinkButton href={`/properties/${property.id}/rooms`}>Set up rooms</LinkButton>
-            }
-          />
-        ) : (
-          <BedGrid rooms={rooms} />
-        )}
-      </Card>
-
-      {property.amenityCodes.length > 0 ? (
-        <Card className="mt-5">
-          <h2 className="mb-3 font-semibold">Facilities</h2>
-          <ul className="flex flex-wrap gap-2">
-            {property.amenityCodes.map((code) => (
-              <li key={code}>
-                <Badge>{code.replace(/_/g, ' ').toLowerCase()}</Badge>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
+            {property.mealPlan ? (
+              <>
+                <p className="eyebrow mb-2 mt-5">Food</p>
+                <p className="text-sm">
+                  {property.mealPlan.foodType === 'NONE'
+                    ? 'No food provided'
+                    : [
+                        property.mealPlan.foodType === 'VEG' ? 'Veg' : property.mealPlan.foodType === 'BOTH' ? 'Veg & non-veg' : 'Non-veg',
+                        [
+                          property.mealPlan.breakfast && 'breakfast',
+                          property.mealPlan.lunch && 'lunch',
+                          property.mealPlan.dinner && 'dinner',
+                        ]
+                          .filter(Boolean)
+                          .join(', '),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                </p>
+              </>
+            ) : null}
+            {property.amenityCodes.length > 0 ? (
+              <>
+                <p className="eyebrow mb-2 mt-5">Facilities</p>
+                <ul className="flex flex-wrap gap-1.5">
+                  {property.amenityCodes.map((code) => (
+                    <li key={code}>
+                      <Badge>{code.replace(/_/g, ' ').toLowerCase()}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </Card>
+        </aside>
+      </div>
     </>
   );
 }

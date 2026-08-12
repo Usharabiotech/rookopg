@@ -5,18 +5,21 @@ function cx(...classes: Array<string | false | undefined>): string {
 }
 
 // ---------------------------------------------------------------------------
-// Button
+// Actions
 // ---------------------------------------------------------------------------
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-teal-600 text-white hover:bg-teal-700 disabled:bg-teal-600/50',
+  primary: 'bg-brass-600 text-white hover:bg-brass-700 disabled:bg-brass-600/50',
   secondary:
-    'bg-white text-ink-800 border border-sand-300 hover:bg-sand-100 dark:bg-transparent dark:text-sand-100 dark:border-ink-600 dark:hover:bg-ink-800',
-  ghost: 'text-ink-600 hover:bg-sand-100 dark:text-sand-300 dark:hover:bg-ink-800',
-  danger: 'bg-clay-600 text-white hover:bg-clay-500 disabled:bg-clay-600/50',
+    'border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--bg-deep)]',
+  ghost: 'text-[var(--text-muted)] hover:bg-[var(--bg-deep)] hover:text-[var(--text)]',
+  danger: 'bg-rust-600 text-white hover:bg-rust-500 disabled:bg-rust-600/50',
 };
+
+const ACTION_BASE =
+  'pressable inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70 disabled:active:translate-y-0';
 
 export function Button({
   variant = 'primary',
@@ -27,23 +30,12 @@ export function Button({
   return (
     <button
       {...props}
-      className={cx(
-        // 44px min height — a thumb on a phone, not a mouse pointer.
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold',
-        'transition-colors disabled:cursor-not-allowed disabled:opacity-70',
-        BUTTON_VARIANTS[variant],
-        fullWidth && 'w-full',
-        className,
-      )}
+      className={cx(ACTION_BASE, BUTTON_VARIANTS[variant], fullWidth && 'w-full', className)}
     />
   );
 }
 
-/**
- * A link that looks like a button. Deliberately an anchor, not a button with
- * an onClick — navigation must work with middle-click, right-click and
- * keyboard the way the rest of the web does.
- */
+/** An anchor styled as a button, so middle-click and keyboard still work. */
 export function LinkButton({
   href,
   variant = 'primary',
@@ -60,12 +52,7 @@ export function LinkButton({
   return (
     <a
       href={href}
-      className={cx(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors',
-        BUTTON_VARIANTS[variant],
-        fullWidth && 'w-full',
-        className,
-      )}
+      className={cx(ACTION_BASE, BUTTON_VARIANTS[variant], fullWidth && 'w-full', className)}
     >
       {children}
     </a>
@@ -80,15 +67,18 @@ export function Card({
   children,
   className,
   as: Tag = 'div',
+  padded = true,
 }: {
   children: ReactNode;
   className?: string;
   as?: 'div' | 'section' | 'li' | 'article';
+  padded?: boolean;
 }) {
   return (
     <Tag
       className={cx(
-        'rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5',
+        'rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]',
+        padded && 'p-4 sm:p-5',
         className,
       )}
     >
@@ -97,21 +87,28 @@ export function Card({
   );
 }
 
+export function Eyebrow({ children }: { children: ReactNode }) {
+  return <p className="eyebrow">{children}</p>;
+}
+
 export function PageHeader({
+  eyebrow,
   title,
   subtitle,
   action,
 }: {
+  eyebrow?: string;
   title: string;
   subtitle?: string;
   action?: ReactNode;
 }) {
   return (
-    <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h1>
+        {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
+        <h1 className="display mt-1 text-2xl leading-tight sm:text-3xl">{title}</h1>
         {subtitle ? (
-          <p className="mt-1 text-sm text-[var(--text-muted)]">{subtitle}</p>
+          <p className="mt-1.5 max-w-prose text-sm text-[var(--text-muted)]">{subtitle}</p>
         ) : null}
       </div>
       {action}
@@ -138,29 +135,26 @@ export function Field({
   required?: boolean;
   children: ReactNode;
 }) {
-  const hintId = hint ? `${htmlFor}-hint` : undefined;
-  const errorId = error ? `${htmlFor}-error` : undefined;
-
   return (
     <div className="space-y-1.5">
       <label htmlFor={htmlFor} className="block text-sm font-medium">
         {label}
         {required ? (
-          <span className="text-clay-600" aria-hidden="true">
+          <span className="text-rust-500" aria-hidden="true">
             {' '}
             *
           </span>
         ) : null}
       </label>
       {hint ? (
-        <p id={hintId} className="text-xs text-[var(--text-muted)]">
+        <p id={`${htmlFor}-hint`} className="text-xs text-[var(--text-muted)]">
           {hint}
         </p>
       ) : null}
       {children}
-      {/* Errors are announced, not merely coloured. */}
+      {/* Announced, not merely coloured. */}
       {error ? (
-        <p id={errorId} role="alert" className="text-xs font-medium text-clay-600">
+        <p id={`${htmlFor}-error`} role="alert" className="text-xs font-medium text-rust-500">
           {error}
         </p>
       ) : null}
@@ -169,9 +163,9 @@ export function Field({
 }
 
 const CONTROL_CLASS =
-  'w-full min-h-11 rounded-xl border border-sand-300 bg-white px-3 text-base ' +
-  'placeholder:text-ink-400 focus:border-teal-600 ' +
-  'dark:border-ink-600 dark:bg-ink-900 dark:text-sand-100';
+  'w-full min-h-11 rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 text-base ' +
+  'text-[var(--text)] placeholder:text-[var(--text-muted)] transition-colors ' +
+  'hover:border-brass-300 focus:border-brass-500';
 
 export function Input({ className, ...props }: ComponentPropsWithoutRef<'input'>) {
   return <input {...props} className={cx(CONTROL_CLASS, className)} />;
@@ -179,14 +173,10 @@ export function Input({ className, ...props }: ComponentPropsWithoutRef<'input'>
 
 export function Select({ className, children, ...props }: ComponentPropsWithoutRef<'select'>) {
   return (
-    <select {...props} className={cx(CONTROL_CLASS, 'appearance-none pr-8', className)}>
+    <select {...props} className={cx(CONTROL_CLASS, className)}>
       {children}
     </select>
   );
-}
-
-export function Textarea({ className, ...props }: ComponentPropsWithoutRef<'textarea'>) {
-  return <textarea {...props} className={cx(CONTROL_CLASS, 'min-h-24 py-2', className)} />;
 }
 
 export function Checkbox({
@@ -197,14 +187,9 @@ export function Checkbox({
   return (
     <label
       htmlFor={id}
-      className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-sand-300 px-3 text-sm dark:border-ink-600"
+      className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-[var(--border-strong)] px-3 text-sm transition-colors hover:border-brass-300"
     >
-      <input
-        id={id}
-        type="checkbox"
-        {...props}
-        className="size-4 rounded border-sand-300 accent-teal-600"
-      />
+      <input id={id} type="checkbox" {...props} className="size-4 rounded accent-brass-600" />
       <span>{label}</span>
     </label>
   );
@@ -214,21 +199,21 @@ export function Checkbox({
 // Feedback
 // ---------------------------------------------------------------------------
 
-type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+type BadgeTone = 'neutral' | 'free' | 'taken' | 'warning' | 'danger';
 
 const BADGE_TONES: Record<BadgeTone, string> = {
-  neutral: 'bg-sand-200 text-ink-800 dark:bg-ink-800 dark:text-sand-200',
-  success: 'bg-teal-100 text-teal-900 dark:bg-teal-900 dark:text-teal-100',
-  warning: 'bg-gold-100 text-gold-600',
-  danger: 'bg-clay-100 text-clay-600',
-  info: 'bg-teal-50 text-teal-700',
+  neutral: 'bg-[var(--bg-deep)] text-[var(--text-muted)] border-[var(--border)]',
+  free: 'bg-moss-100 text-moss-700 border-moss-500/30',
+  taken: 'bg-brass-100 text-brass-700 border-brass-500/30',
+  warning: 'bg-brass-100 text-brass-700 border-brass-500/30',
+  danger: 'bg-rust-100 text-rust-600 border-rust-500/30',
 };
 
 export function Badge({ tone = 'neutral', children }: { tone?: BadgeTone; children: ReactNode }) {
   return (
     <span
       className={cx(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+        'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium',
         BADGE_TONES[tone],
       )}
     >
@@ -245,12 +230,12 @@ export function Alert({
   children: ReactNode;
 }) {
   const tones = {
-    danger: 'border-clay-500/40 bg-clay-100 text-clay-600',
-    info: 'border-teal-500/30 bg-teal-50 text-teal-700',
-    success: 'border-teal-500/40 bg-teal-100 text-teal-900',
+    danger: 'border-rust-500/40 bg-rust-100 text-rust-600',
+    info: 'border-brass-500/30 bg-brass-100 text-brass-700',
+    success: 'border-moss-500/40 bg-moss-100 text-moss-700',
   };
   return (
-    <div role="alert" className={cx('rounded-xl border px-3 py-2.5 text-sm', tones[tone])}>
+    <div role="alert" className={cx('rounded-lg border px-3 py-2.5 text-sm', tones[tone])}>
       {children}
     </div>
   );
@@ -266,19 +251,33 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-[var(--radius-card)] border border-dashed border-[var(--border)] px-6 py-12 text-center">
-      <p className="font-semibold">{title}</p>
-      <p className="mx-auto mt-1 max-w-sm text-sm text-[var(--text-muted)]">{description}</p>
-      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
+    <div className="rounded-[var(--radius-card)] border border-dashed border-[var(--border-strong)] px-6 py-14 text-center">
+      <p className="display text-lg">{title}</p>
+      <p className="mx-auto mt-1.5 max-w-sm text-sm text-[var(--text-muted)]">{description}</p>
+      {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
     </div>
   );
 }
 
-export function Stat({ value, label }: { value: string | number; label: string }) {
+/** A figure and its label. Numbers are mono so columns of them line up. */
+export function Stat({
+  value,
+  label,
+  tone = 'default',
+}: {
+  value: string | number;
+  label: string;
+  tone?: 'default' | 'free' | 'taken';
+}) {
+  const colours = {
+    default: 'text-[var(--text)]',
+    free: 'text-moss-600',
+    taken: 'text-brass-600',
+  };
   return (
     <div>
-      <p className="tnum text-2xl font-bold leading-none">{value}</p>
-      <p className="mt-1 text-xs text-[var(--text-muted)]">{label}</p>
+      <p className={cx('figure text-2xl font-semibold leading-none', colours[tone])}>{value}</p>
+      <p className="eyebrow mt-1.5">{label}</p>
     </div>
   );
 }

@@ -1,58 +1,91 @@
 @import 'tailwindcss';
 
 /*
-  Design direction: a working tool, not a brochure.
+  PG Platform — visual language
 
-  Owners and field reps use this standing in a stairwell on a mid-range phone
-  in daylight, so: high contrast, large tap targets, numbers that read at a
-  glance. Deep teal rather than the default SaaS blue, on warm sand neutrals
-  so long sessions are easy on the eyes.
+  The subject is a building full of numbered doors and a rack of keys behind
+  the warden's desk. Everything here comes from that: mono numerals because
+  rooms label themselves that way, brass because a taken bed is a key off the
+  hook, floors as bands because a building is stacked.
+
+  Base is navy-ink rather than neutral black. Blue-tinted darks hold shadow
+  and let surfaces separate; flat charcoal goes muddy the moment you stack
+  two panels.
 */
 
 @theme {
-  --color-sand-50: #faf8f5;
-  --color-sand-100: #f4f0e9;
-  --color-sand-200: #e8e1d5;
-  --color-sand-300: #d6cbb8;
+  /* Ink — brand, text, dark surfaces */
+  --color-ink-50: #eef1f6;
+  --color-ink-200: #c3ccdb;
+  --color-ink-400: #6b7a94;
+  --color-ink-500: #4a5a75;
+  --color-ink-600: #33435c;
+  --color-ink-700: #223045;
+  --color-ink-800: #182333;
+  --color-ink-900: #101a27;
+  --color-ink-950: #0a121c;
 
-  --color-ink-400: #8a8578;
-  --color-ink-600: #57534a;
-  --color-ink-800: #2c2a25;
-  --color-ink-900: #1a1916;
+  /* Paper — warm light ground, kept grey enough to dodge the cream cliché */
+  --color-paper-50: #f7f6f3;
+  --color-paper-100: #efedE8;
+  --color-paper-200: #e2dfd7;
+  --color-paper-300: #cdc8bc;
 
-  --color-teal-50: #eefbf7;
-  --color-teal-100: #d3f5ea;
-  --color-teal-500: #14a085;
-  --color-teal-600: #0d7f6a;
-  --color-teal-700: #0a6354;
-  --color-teal-900: #063b32;
+  /* Brass — a key off the hook. Occupied, and the primary action. */
+  --color-brass-100: #f7ecd6;
+  --color-brass-300: #e0c084;
+  --color-brass-500: #b8863b;
+  --color-brass-600: #9a6d2b;
+  --color-brass-700: #7a5520;
 
-  --color-clay-100: #fdeee8;
-  --color-clay-500: #d1603d;
-  --color-clay-600: #b04a2b;
+  /* Moss — free, available, positive */
+  --color-moss-100: #dcece1;
+  --color-moss-500: #3d8a63;
+  --color-moss-600: #2f6e4e;
+  --color-moss-700: #23543c;
 
-  --color-gold-100: #fdf3d7;
-  --color-gold-600: #a67c1a;
+  /* Rust — errors and destructive actions */
+  --color-rust-100: #f8e3dd;
+  --color-rust-500: #b8503a;
+  --color-rust-600: #9a3f2c;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --radius-card: 0.875rem;
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
+
+  --radius-card: 0.75rem;
 }
 
+/* Light is the default: this tool is used in daylight, in a stairwell. */
 :root {
-  --bg: var(--color-sand-50);
+  --bg: var(--color-paper-50);
+  --bg-deep: var(--color-paper-100);
   --surface: #ffffff;
-  --border: var(--color-sand-200);
+  --surface-raised: #ffffff;
+  --border: var(--color-paper-200);
+  --border-strong: var(--color-paper-300);
   --text: var(--color-ink-900);
-  --text-muted: var(--color-ink-600);
+  --text-muted: var(--color-ink-500);
+  --rail: var(--color-ink-900);
+  --rail-text: var(--color-ink-200);
+  --rail-active: #ffffff;
+  --shadow-card: 0 1px 2px rgb(16 26 39 / 0.06), 0 1px 3px rgb(16 26 39 / 0.04);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14130f;
-    --surface: #1e1c17;
-    --border: #332f27;
-    --text: #f4f0e9;
-    --text-muted: #a8a294;
+    --bg: var(--color-ink-950);
+    --bg-deep: #070d15;
+    --surface: var(--color-ink-900);
+    --surface-raised: var(--color-ink-800);
+    --border: #1d2b3d;
+    --border-strong: #2b3d54;
+    --text: var(--color-paper-50);
+    --text-muted: #8fa0b8;
+    --rail: #070d15;
+    --rail-text: #8fa0b8;
+    --rail-active: #ffffff;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
   }
 }
 
@@ -65,20 +98,116 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  /* Room for the sticky action bar on phones. */
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Visible focus everywhere. Never remove the ring without replacing it. */
+/*
+  Eyebrow: small caps with wide tracking. Used only where a label names a
+  region of the page — never as decoration.
+*/
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Room and bed codes, money, counts — anything a person reads as a figure. */
+.figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'zero' 1;
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
 :focus-visible {
-  outline: 2px solid var(--color-teal-600);
+  outline: 2px solid var(--color-brass-500);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* Tabular figures so occupancy counts do not jitter as they change. */
-.tnum {
-  font-variant-numeric: tabular-nums;
+/* ---------------------------------------------------------------------------
+   Motion
+
+   One idea, used consistently: things arrive from slightly below, in the
+   order you would read them. Nothing loops, nothing bounces, nothing draws
+   attention to itself after it has settled.
+--------------------------------------------------------------------------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tag-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) rotate(-3deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Staggers a list without needing a class per row. */
+.stagger > * {
+  animation: rise 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger > *:nth-child(3) { animation-delay: 0.1s; }
+.stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger > *:nth-child(6) { animation-delay: 0.22s; }
+.stagger > *:nth-child(n + 7) { animation-delay: 0.26s; }
+
+/* Key tags settle onto the rack. */
+.rack > * {
+  animation: tag-drop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rack > *:nth-child(2) { animation-delay: 0.03s; }
+.rack > *:nth-child(3) { animation-delay: 0.06s; }
+.rack > *:nth-child(4) { animation-delay: 0.09s; }
+.rack > *:nth-child(n + 5) { animation-delay: 0.12s; }
+
+/* Pressable: a small, physical acknowledgement of a tap. */
+.pressable {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+.pressable:active {
+  transform: translateY(1px);
+}
+
+.lift {
+  transition:
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgb(16 26 39 / 0.09);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -86,6 +215,11 @@ body {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
+  }
+  .lift:hover,
+  .pressable:active {
+    transform: none;
   }
 }
