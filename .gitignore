@@ -58,3 +58,6 @@ desktop.ini
 # Local scratch
 tmp/
 .cache/
+
+# Local photo store (development only)
+apps/backend/storage/

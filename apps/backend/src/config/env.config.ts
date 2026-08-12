@@ -33,6 +33,29 @@ const envSchema = z.object({
 
   FIELD_ENCRYPTION_KEY: z.string().min(32, 'FIELD_ENCRYPTION_KEY must be at least 32 characters'),
 
+  /**
+   * Where uploaded photos live. `local` writes to disk and is for development
+   * only — a container filesystem does not survive a redeploy. `s3` covers
+   * Cloudflare R2, AWS S3, and anything else speaking the same protocol.
+   */
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  STORAGE_LOCAL_DIR: z.string().default('./storage/media'),
+  /** Largest image accepted, after the browser has already downscaled it. */
+  STORAGE_MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(8_000_000),
+  /** How long a signed read URL stays valid. */
+  STORAGE_SIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+
+  S3_ENDPOINT: z.string().optional(),
+  S3_REGION: z.string().default('auto'),
+  S3_BUCKET: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  /** R2 and MinIO want path-style addressing; AWS S3 does not. */
+  S3_FORCE_PATH_STYLE: z
+    .enum(['0', '1'])
+    .default('1')
+    .transform((value) => value === '1'),
+
   PLATFORM_COMMISSION_BPS: z.coerce.number().int().min(0).max(10_000).default(400),
   PLATFORM_CONVENIENCE_FEE_PAISE: z.coerce.number().int().min(0).default(2500),
 });
@@ -53,6 +76,24 @@ export function validateEnv(raw: Record<string, unknown>): AppConfig {
 
   if (config.NODE_ENV === 'production' && config.CORS_ORIGINS.length === 0) {
     throw new Error('CORS_ORIGINS must be set in production');
+  }
+
+  if (config.STORAGE_DRIVER === 's3') {
+    const missing = (
+      ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const
+    ).filter((key) => !config[key]);
+    if (missing.length > 0) {
+      throw new Error(`STORAGE_DRIVER=s3 requires: ${missing.join(', ')}`);
+    }
+  }
+
+  // Local disk is fine on a laptop and wrong on a server: the filesystem goes
+  // away with the container, taking every photo with it. Fail loudly rather
+  // than silently losing a field team's work.
+  if (config.NODE_ENV === 'production' && config.STORAGE_DRIVER === 'local') {
+    throw new Error(
+      'STORAGE_DRIVER=local cannot be used in production — uploaded photos would be lost on redeploy. Configure s3 (Cloudflare R2, AWS S3, or compatible).',
+    );
   }
 
   return config;

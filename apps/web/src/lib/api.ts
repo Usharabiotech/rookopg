@@ -101,3 +101,70 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
+
+/**
+ * Authenticated multipart upload.
+ *
+ * Kept separate from api() because fetch must set its own multipart boundary —
+ * passing a Content-Type here produces a body the server cannot parse.
+ */
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  const send = async (token: string): Promise<Response> =>
+    fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+      body: form,
+      cache: 'no-store',
+    });
+
+  const accessToken = await readAccessToken();
+  if (accessToken) {
+    const response = await send(accessToken);
+    if (response.ok) return (await response.json()) as T;
+    if (response.status !== 401) throw await parseError(response);
+  }
+
+  const refreshToken = await readRefreshToken();
+  if (!refreshToken) throw new ApiError(401, 'AUTHENTICATION_REQUIRED', 'Please sign in again');
+
+  const refreshed = await rawRequest<AuthSession>('/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken },
+  });
+  await saveSession(refreshed);
+
+  const retried = await send(refreshed.accessToken);
+  if (!retried.ok) throw await parseError(retried);
+  return (await retried.json()) as T;
+}
+
+/**
+ * Fetches raw bytes (an image) with the caller's credentials.
+ *
+ * The browser has no API token — that is the point of keeping it in an
+ * httpOnly cookie — so image requests are proxied through the web server.
+ */
+export async function apiFetchRaw(path: string): Promise<Response> {
+  const get = async (token: string): Promise<Response> =>
+    fetch(`${API_BASE_URL}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+      redirect: 'follow',
+    });
+
+  const accessToken = await readAccessToken();
+  if (accessToken) {
+    const response = await get(accessToken);
+    if (response.status !== 401) return response;
+  }
+
+  const refreshToken = await readRefreshToken();
+  if (!refreshToken) throw new ApiError(401, 'AUTHENTICATION_REQUIRED', 'Please sign in again');
+
+  const refreshed = await rawRequest<AuthSession>('/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken },
+  });
+  await saveSession(refreshed);
+  return get(refreshed.accessToken);
+}

@@ -4,8 +4,10 @@ import { notFound } from 'next/navigation';
 import { api, isApiError } from '@/lib/api';
 import { Badge, Card, EmptyState, LinkButton, PageHeader, Stat } from '@/components/ui';
 import { genderLabel, rupeesShort } from '@/lib/format';
-import type { PropertyDetail, Room } from '@/lib/types';
+import type { Media, PropertyDetail, Room } from '@/lib/types';
 import { BedGrid } from './bed-grid';
+import { PhotoGrid } from './photos/photo-grid';
+import { PhotoUploader } from './photos/photo-uploader';
 
 type Params = Promise<{ propertyId: string }>;
 
@@ -24,11 +26,13 @@ export default async function PropertyPage({ params }: { params: Params }) {
 
   let property: PropertyDetail;
   let rooms: Room[];
+  let photos: Media[];
 
   try {
-    [property, rooms] = await Promise.all([
+    [property, rooms, photos] = await Promise.all([
       api<PropertyDetail>(`/properties/${propertyId}`),
       api<Room[]>(`/properties/${propertyId}/rooms`),
+      api<Media[]>(`/properties/${propertyId}/media`),
     ]);
   } catch (error) {
     // The API answers 404 for another organisation's property too, so this
@@ -81,7 +85,22 @@ export default async function PropertyPage({ params }: { params: Params }) {
         </div>
 
         {/* Summary rail: the numbers stay visible while the board scrolls. */}
-        <aside className="order-1 space-y-4 lg:order-2 lg:sticky lg:top-6">
+        <div className="order-3 lg:order-1 lg:col-start-1">
+          <Card>
+            <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="display text-lg">Photos</h2>
+              <p className="text-xs text-[var(--text-muted)]">
+                {photos.length} of 60 · tenants decide from these
+              </p>
+            </div>
+            <PhotoGrid propertyId={property.id} photos={photos} />
+            <div className="mt-5 border-t border-[var(--border)] pt-5">
+              <PhotoUploader propertyId={property.id} />
+            </div>
+          </Card>
+        </div>
+
+        <aside className="order-1 space-y-4 lg:order-2 lg:sticky lg:top-6 lg:row-start-1 lg:col-start-2">
           <Card>
             <div className="flex flex-wrap gap-x-7 gap-y-5 lg:grid lg:grid-cols-2">
               <Stat value={property.availableBeds} label="free now" tone="free" />

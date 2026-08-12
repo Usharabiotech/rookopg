@@ -147,6 +147,29 @@ export interface OrgMember {
   addedAt: string;
 }
 
+export type MediaTag =
+  | 'EXTERIOR'
+  | 'ROOM'
+  | 'BATHROOM'
+  | 'KITCHEN'
+  | 'COMMON_AREA'
+  | 'DINING'
+  | 'ENTRANCE'
+  | 'OTHER';
+
+export interface Media {
+  id: string;
+  propertyId: string;
+  roomId?: string;
+  tag: MediaTag;
+  sortOrder: number;
+  sizeBytes: number;
+  moderation: string;
+  createdAt: string;
+  displayUrl: string;
+  thumbUrl: string;
+}
+
 export interface ApiErrorBody {
   statusCode: number;
   code: string;
