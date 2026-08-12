@@ -91,18 +91,27 @@ Your answers are also kept inline below each question for context.
 | # | Decision |
 | --- | --- |
 | 15 | **Web and app together.** App is needed for QR scanning. Sequencing note: the scanner isn't needed until check-in exists, so web ships first and the app follows before bookings go live |
+| 18 | **No gate log. Out of scope, not deferred.** PGs and hostels already run fingerprint readers at the gate; duplicating that adds a table, a scanner mode and a pile of edge cases for something the building already does better. Our QR is issued once and used once, at move-in registration |
 | 19 | **Two roles only: owner and manager.** Warden and accountant dropped — simpler, matches how these PGs actually run |
 | 22 | **All of Hyderabad.** Sign any PG or hostel willing to join, no area restriction |
 | 23 | **Fixed prices**, shown as-is. No "starting from" or negotiable flag |
 | 12, 13, 14, 16, 17, 20, 21 | As recommended — login to see contact, 15-min hold, SMS + WhatsApp + push, ranking by relevance/responsiveness/freshness, staleness enforcement, verified-stay reviews only, no late fees |
 
-## ⏳ Still open — I will remind you
+## ⏳ Still open — and when each one actually blocks
 
-| # | Question | Needed by |
-| --- | --- | --- |
-| 10 | **Refund rules** — the percentages | Before booking and payments are built |
-| 18 | **Gate log / daily in-out tracking** | Before the QR scanner is designed |
-| Part 3 | **CA and lawyer items** | You're asking your CA |
+None of these hold up the current work. They are values and policy, not
+structure, so the code is written to take them as data. Deciding late costs
+nothing; deciding *wrongly* and changing later costs a database row.
+
+| # | Question | Genuinely blocks | Cost of deciding late |
+| --- | --- | --- | --- |
+| 10 | Refund percentages | Online booking with payment | **None.** Percentages are rows in `policy_versions`; each booking records which version it accepted. Changing them is data, not a deploy. The *shape* is assumed tiered by days-to-move-in — say so if you'd rather have a flat non-refundable amount, because that is different logic |
+| — | TDS 194-O | Owner payouts going live | Low. Adds columns to the payout record |
+| — | GST on commission | Invoices and commission display | Low. Additive columns |
+| — | Route vs aggregator licensing | Going live with money | Already accounted for — the platform never holds funds, which is the compliant shape either way. A different answer changes company structure, not this code |
+
+Offline booking, rent tracking and tenant search involve no refunds and no
+payouts, so these stay open until online payments are wired up.
 
 ## Note on decision 8
 
