@@ -1,0 +1,155 @@
+/**
+ * Response shapes from the backend API.
+ *
+ * TODO: move to packages/api-contracts and generate from the OpenAPI document
+ * so these cannot drift. Kept local until the shared package exists.
+ */
+
+export type OrgRole = 'OWNER' | 'MANAGER';
+
+export interface Membership {
+  orgId: string;
+  orgName: string;
+  role: OrgRole;
+  propertyIds: string[];
+  canCreateProperties: boolean;
+}
+
+export interface AuthUser {
+  id: string;
+  phone: string;
+  fullName?: string;
+  memberships: Membership[];
+  platformRoles: string[];
+}
+
+export interface AuthSession {
+  accessToken: string;
+  refreshToken: string;
+  accessExpiresInSeconds: number;
+  user: AuthUser;
+}
+
+export interface Organisation {
+  id: string;
+  name: string;
+  legalName?: string;
+  status: string;
+  verificationStatus: string;
+  freePeriodMonths: number;
+  freePeriodStartsAt?: string;
+  myRole: OrgRole;
+  propertyCount: number;
+  createdAt: string;
+}
+
+export interface PropertySummary {
+  id: string;
+  orgId: string;
+  name: string;
+  propertyType: string;
+  genderPolicy: 'MEN' | 'WOMEN' | 'CO_LIVING';
+  localityName: string;
+  pincode: string;
+  totalBeds: number;
+  availableBeds: number;
+  roomCount: number;
+  listingStatus: string;
+  createdAt: string;
+}
+
+export interface MealPlan {
+  foodType: 'VEG' | 'NON_VEG' | 'BOTH' | 'NONE';
+  breakfast?: boolean;
+  lunch?: boolean;
+  dinner?: boolean;
+  includedInRent?: boolean;
+  extraChargePaise?: number;
+  notes?: string;
+}
+
+export interface PropertyRules {
+  gateClosingTime?: string;
+  visitorsAllowed?: boolean;
+  smokingAllowed?: boolean;
+  alcoholAllowed?: boolean;
+  cookingAllowed?: boolean;
+  notes?: string;
+}
+
+export interface PropertyDetail extends PropertySummary {
+  addressLine1: string;
+  addressLine2?: string;
+  landmark?: string;
+  localityId: string;
+  latitude?: number;
+  longitude?: number;
+  contactPhone?: string;
+  defaultRentCycleDay?: number;
+  amenityCodes: string[];
+  mealPlan?: MealPlan;
+  rules?: PropertyRules;
+}
+
+export interface Bed {
+  id: string;
+  code: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
+  rentPaise: number;
+  occupied: boolean;
+  availableFrom?: string;
+}
+
+export type SharingType = 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD' | 'DORMITORY';
+
+export interface Room {
+  id: string;
+  propertyId: string;
+  code: string;
+  floor?: number;
+  sharingType: SharingType;
+  sharingCapacity: number;
+  saleMode: 'PER_BED' | 'WHOLE_ROOM';
+  gender: 'MEN' | 'WOMEN' | 'ANY';
+  baseRentPaise: number;
+  depositPaise: number;
+  hasAc: boolean;
+  hasAttachedBath: boolean;
+  hasBalcony: boolean;
+  status: string;
+  beds: Bed[];
+}
+
+export interface Locality {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+}
+
+export interface Amenity {
+  code: string;
+  name: string;
+  category: string;
+  isFilterable: boolean;
+}
+
+export interface OrgMember {
+  membershipId: string;
+  userId: string;
+  phone: string;
+  fullName?: string;
+  role: OrgRole;
+  active: boolean;
+  canCreateProperties: boolean;
+  propertyIds: string[];
+  hasSignedIn: boolean;
+  addedAt: string;
+}
+
+export interface ApiErrorBody {
+  statusCode: number;
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
+}

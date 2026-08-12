@@ -168,15 +168,30 @@ Conventions:
 
 # Commands
 
-To be filled in as the toolchain lands, so these can be run without guessing.
+Run from the repository root unless stated otherwise.
 
 | Task | Command |
 | --- | --- |
-| Install | _TODO_ |
-| Dev (backend) | _TODO_ |
-| Dev (web) | _TODO_ |
-| Dev (mobile) | _TODO_ |
-| Test | _TODO_ |
-| Lint / typecheck | _TODO_ |
-| Prisma migrate | _TODO_ |
-| Build | _TODO_ |
+| Install | `pnpm install` |
+| Start local Postgres | `pnpm db:up` (stop with `pnpm db:down`) |
+| Dev (backend) | `pnpm --filter @pgplatform/backend dev` → http://localhost:3001/api/v1 |
+| Dev (web) | `pnpm --filter @pgplatform/web dev` → http://localhost:3000 |
+| Dev (mobile) | Not scaffolded yet. Flutter SDK is at `C:\src\flutter` |
+| Test | `pnpm --filter @pgplatform/backend test` |
+| Typecheck | `pnpm typecheck` |
+| Prisma migrate | `pnpm --filter @pgplatform/backend prisma:migrate` |
+| Prisma seed | `pnpm --filter @pgplatform/backend prisma:seed` |
+| Prisma studio | `pnpm --filter @pgplatform/backend prisma:studio` |
+| Build | `pnpm build` |
+
+Local environment notes:
+
+- Postgres runs on host port **55432**, not 5432 — ports 5432-5434 are taken by
+  other projects on this machine. See `infrastructure/docker/docker-compose.dev.yml`.
+- API docs (dev only): http://localhost:3001/api/docs
+- In development, the login OTP is returned in the response and logged to the
+  console. SMS is not connected yet — DLT registration is pending.
+- Jest runs single-threaded (`maxWorkers: 1`); parallel workers crash V8 on
+  this Windows setup.
+- Copy `.env.example` to `.env` in `apps/backend`, and to `.env.local` in
+  `apps/web`.

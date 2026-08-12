@@ -1,0 +1,91 @@
+@import 'tailwindcss';
+
+/*
+  Design direction: a working tool, not a brochure.
+
+  Owners and field reps use this standing in a stairwell on a mid-range phone
+  in daylight, so: high contrast, large tap targets, numbers that read at a
+  glance. Deep teal rather than the default SaaS blue, on warm sand neutrals
+  so long sessions are easy on the eyes.
+*/
+
+@theme {
+  --color-sand-50: #faf8f5;
+  --color-sand-100: #f4f0e9;
+  --color-sand-200: #e8e1d5;
+  --color-sand-300: #d6cbb8;
+
+  --color-ink-400: #8a8578;
+  --color-ink-600: #57534a;
+  --color-ink-800: #2c2a25;
+  --color-ink-900: #1a1916;
+
+  --color-teal-50: #eefbf7;
+  --color-teal-100: #d3f5ea;
+  --color-teal-500: #14a085;
+  --color-teal-600: #0d7f6a;
+  --color-teal-700: #0a6354;
+  --color-teal-900: #063b32;
+
+  --color-clay-100: #fdeee8;
+  --color-clay-500: #d1603d;
+  --color-clay-600: #b04a2b;
+
+  --color-gold-100: #fdf3d7;
+  --color-gold-600: #a67c1a;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --radius-card: 0.875rem;
+}
+
+:root {
+  --bg: var(--color-sand-50);
+  --surface: #ffffff;
+  --border: var(--color-sand-200);
+  --text: var(--color-ink-900);
+  --text-muted: var(--color-ink-600);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14130f;
+    --surface: #1e1c17;
+    --border: #332f27;
+    --text: #f4f0e9;
+    --text-muted: #a8a294;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* Room for the sticky action bar on phones. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Visible focus everywhere. Never remove the ring without replacing it. */
+:focus-visible {
+  outline: 2px solid var(--color-teal-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Tabular figures so occupancy counts do not jitter as they change. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
