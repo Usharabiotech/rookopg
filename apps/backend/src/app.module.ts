@@ -12,10 +12,12 @@ import { BillingModule } from './modules/billing/billing.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { IamModule } from './modules/iam/iam.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { ListingModule } from './modules/listing/listing.module';
 import { MediaModule } from './modules/media/media.module';
 import { OrganisationModule } from './modules/organisation/organisation.module';
 import { PropertyModule } from './modules/property/property.module';
 import { ReferenceModule } from './modules/reference/reference.module';
+import { SearchModule } from './modules/search/search.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
@@ -46,6 +48,8 @@ import { HealthController } from './health.controller';
     MediaModule,
     TenancyModule,
     BillingModule,
+    ListingModule,
+    SearchModule,
   ],
   controllers: [HealthController],
   providers: [

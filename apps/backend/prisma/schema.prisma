@@ -635,6 +635,11 @@ model Listing {
   propertyId String        @unique @db.Uuid
   status     ListingStatus @default(DRAFT)
 
+  /// Stable, human-readable URL segment: "sunrise-mens-pg-madhapur-a1b2c3".
+  /// Assigned once at first publish and never regenerated — a listing that
+  /// changes its URL loses whatever search ranking it had earned.
+  slug String? @unique @db.VarChar(200)
+
   headline    String? @db.VarChar(200)
   description String? @db.Text
 
