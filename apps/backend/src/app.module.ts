@@ -16,6 +16,7 @@ import { PropertyModule } from './modules/property/property.module';
 import { ReferenceModule } from './modules/reference/reference.module';
 import { StaffModule } from './modules/staff/staff.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { TenancyModule } from './modules/tenancy/tenancy.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -39,6 +40,7 @@ import { HealthController } from './health.controller';
     InventoryModule,
     StorageModule,
     MediaModule,
+    TenancyModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -4,10 +4,11 @@ import { notFound } from 'next/navigation';
 import { api, isApiError } from '@/lib/api';
 import { Badge, Card, EmptyState, LinkButton, PageHeader, Stat } from '@/components/ui';
 import { genderLabel, rupeesShort } from '@/lib/format';
-import type { Media, PropertyDetail, Room } from '@/lib/types';
+import type { Media, PropertyDetail, Room, Tenancy } from '@/lib/types';
 import { BedGrid } from './bed-grid';
 import { PhotoGrid } from './photos/photo-grid';
 import { PhotoUploader } from './photos/photo-uploader';
+import { TenantList } from './tenant-list';
 
 type Params = Promise<{ propertyId: string }>;
 
@@ -27,12 +28,14 @@ export default async function PropertyPage({ params }: { params: Params }) {
   let property: PropertyDetail;
   let rooms: Room[];
   let photos: Media[];
+  let tenancies: Tenancy[];
 
   try {
-    [property, rooms, photos] = await Promise.all([
+    [property, rooms, photos, tenancies] = await Promise.all([
       api<PropertyDetail>(`/properties/${propertyId}`),
       api<Room[]>(`/properties/${propertyId}/rooms`),
       api<Media[]>(`/properties/${propertyId}/media`),
+      api<Tenancy[]>(`/properties/${propertyId}/tenancies`),
     ]);
   } catch (error) {
     // The API answers 404 for another organisation's property too, so this
@@ -79,13 +82,24 @@ export default async function PropertyPage({ params }: { params: Params }) {
                 action={<LinkButton href={`/properties/${property.id}/rooms`}>Set up rooms</LinkButton>}
               />
             ) : (
-              <BedGrid rooms={rooms} />
+              <BedGrid propertyId={property.id} rooms={rooms} tenancies={tenancies} />
             )}
           </Card>
         </div>
 
-        {/* Summary rail: the numbers stay visible while the board scrolls. */}
         <div className="order-3 lg:order-1 lg:col-start-1">
+          <Card>
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="display text-lg">Who is living here</h2>
+              <p className="text-xs text-[var(--text-muted)]">
+                {tenancies.length} {tenancies.length === 1 ? 'tenant' : 'tenants'}
+              </p>
+            </div>
+            <TenantList propertyId={property.id} tenancies={tenancies} />
+          </Card>
+        </div>
+
+        <div className="order-4 lg:order-1 lg:col-start-1">
           <Card>
             <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="display text-lg">Photos</h2>

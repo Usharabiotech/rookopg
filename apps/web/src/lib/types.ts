@@ -147,6 +147,31 @@ export interface OrgMember {
   addedAt: string;
 }
 
+export interface TenantSummary {
+  id: string;
+  fullName: string;
+  phone: string;
+  hasClaimedAccount: boolean;
+}
+
+export interface Tenancy {
+  id: string;
+  propertyId: string;
+  bedId: string;
+  roomCode: string;
+  bedCode: string;
+  tenant: TenantSummary;
+  startDate: string;
+  endDate?: string;
+  agreedRentPaise: number;
+  depositPaise: number;
+  cycleAnchorDay?: number;
+  noticeDays: number;
+  status: 'ACTIVE' | 'NOTICE_GIVEN' | 'ENDED';
+  source: 'ONLINE' | 'OFFLINE';
+  createdAt: string;
+}
+
 export type MediaTag =
   | 'EXTERIOR'
   | 'ROOM'
