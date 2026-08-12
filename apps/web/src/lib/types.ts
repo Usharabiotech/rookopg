@@ -172,6 +172,57 @@ export interface Tenancy {
   createdAt: string;
 }
 
+export interface Invoice {
+  id: string;
+  tenancyId: string;
+  kind: string;
+  status: 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'VOID' | 'WRITTEN_OFF';
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
+  amountPaise: number;
+  paidPaise: number;
+  outstandingPaise: number;
+  isProRata: boolean;
+  description?: string;
+  daysOverdue: number;
+}
+
+export interface TenantDues {
+  tenancyId: string;
+  tenantName: string;
+  phone: string;
+  roomCode: string;
+  bedCode: string;
+  monthlyRentPaise: number;
+  outstandingPaise: number;
+  creditPaise: number;
+  oldestDueDate?: string;
+  daysOverdue: number;
+  invoices: Invoice[];
+}
+
+export interface CollectionSummary {
+  billedPaise: number;
+  collectedPaise: number;
+  outstandingPaise: number;
+  tenantsInArrears: number;
+  tenantCount: number;
+}
+
+export interface DuesResponse {
+  summary: CollectionSummary;
+  tenants: TenantDues[];
+}
+
+export interface PaymentReceipt {
+  paymentId: string;
+  amountPaise: number;
+  allocatedPaise: number;
+  creditPaise: number;
+  settled: Invoice[];
+}
+
 export type MediaTag =
   | 'EXTERIOR'
   | 'ROOM'

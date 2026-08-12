@@ -61,13 +61,17 @@ export default async function PropertyPage({ params }: { params: Params }) {
         title={property.name}
         subtitle={`${genderLabel(property.genderPolicy)} · ${property.addressLine1} · ${property.pincode}`}
         action={
-          <LinkButton
-            href={`/properties/${property.id}/rooms`}
-            variant={rooms.length === 0 ? 'primary' : 'secondary'}
-            className="shrink-0"
-          >
-            {rooms.length === 0 ? 'Set up rooms' : 'Add rooms'}
-          </LinkButton>
+          <div className="flex shrink-0 gap-2">
+            {tenancies.length > 0 ? (
+              <LinkButton href={`/properties/${property.id}/rent`}>Rent</LinkButton>
+            ) : null}
+            <LinkButton
+              href={`/properties/${property.id}/rooms`}
+              variant={rooms.length === 0 ? 'primary' : 'secondary'}
+            >
+              {rooms.length === 0 ? 'Set up rooms' : 'Add rooms'}
+            </LinkButton>
+          </div>
         }
       />
 
