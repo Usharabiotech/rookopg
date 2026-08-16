@@ -60,7 +60,7 @@ export async function bulkCreateRoomsAction(
   }
 
   try {
-    await api(`/dashboard/properties/${propertyId}/rooms/bulk`, {
+    await api(`/properties/${propertyId}/rooms/bulk`, {
       method: 'POST',
       body: {
         floors: parsed.data.map((floor) => ({

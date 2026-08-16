@@ -18,8 +18,8 @@ export default async function SeatTenantPage({ params }: { params: Params }) {
   let rooms: Room[];
   try {
     [property, rooms] = await Promise.all([
-      api<PropertyDetail>(`/dashboard/properties/${propertyId}`),
-      api<Room[]>(`/dashboard/properties/${propertyId}/rooms`),
+      api<PropertyDetail>(`/properties/${propertyId}`),
+      api<Room[]>(`/properties/${propertyId}/rooms`),
     ]);
   } catch (error) {
     if (isApiError(error) && error.status === 404) notFound();

@@ -16,7 +16,7 @@ export default async function RecordPaymentPage({ params }: { params: Params }) 
 
   let dues: DuesResponse;
   try {
-    dues = await api<DuesResponse>(`/dashboard/properties/${propertyId}/dues`);
+    dues = await api<DuesResponse>(`/properties/${propertyId}/dues`);
   } catch (error) {
     if (isApiError(error) && error.status === 404) notFound();
     throw error;

@@ -38,7 +38,7 @@ export async function recordPaymentAction(
   const input = parsed.data;
 
   try {
-    await api<PaymentReceipt>(`/dashboard/properties/${propertyId}/payments`, {
+    await api<PaymentReceipt>(`/properties/${propertyId}/payments`, {
       method: 'POST',
       body: {
         tenancyId,

@@ -15,7 +15,7 @@ export default async function RoomsSetupPage({ params }: { params: Params }) {
 
   let property: PropertyDetail;
   try {
-    property = await api<PropertyDetail>(`/dashboard/properties/${propertyId}`);
+    property = await api<PropertyDetail>(`/properties/${propertyId}`);
   } catch (error) {
     if (isApiError(error) && error.status === 404) notFound();
     throw error;

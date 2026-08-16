@@ -99,8 +99,8 @@ export default async function RentPage({ params }: { params: Params }) {
   let dues: DuesResponse;
   try {
     [property, dues] = await Promise.all([
-      api<PropertyDetail>(`/dashboard/properties/${propertyId}`),
-      api<DuesResponse>(`/dashboard/properties/${propertyId}/dues`),
+      api<PropertyDetail>(`/properties/${propertyId}`),
+      api<DuesResponse>(`/properties/${propertyId}/dues`),
     ]);
   } catch (error) {
     if (isApiError(error) && error.status === 404) notFound();

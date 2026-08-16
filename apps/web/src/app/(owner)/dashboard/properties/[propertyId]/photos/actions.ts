@@ -40,8 +40,7 @@ export async function uploadPhotosAction(
   for (const file of files) outgoing.append('files', file, file.name);
 
   try {
-    const result = await apiUpload<{ uploaded: Media[]; rejected: string[] }>(
-      `/dashboard/properties/${propertyId}/media`,
+    const result = await apiUpload<{ uploaded: Media[]; rejected: string[] }>(`/properties/${propertyId}/media`,
       outgoing,
     );
     revalidatePath(`/dashboard/properties/${propertyId}`);

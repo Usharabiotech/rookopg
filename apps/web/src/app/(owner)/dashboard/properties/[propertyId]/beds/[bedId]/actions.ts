@@ -35,7 +35,7 @@ export async function seatTenantAction(_prev: SeatState, formData: FormData): Pr
   const input = parsed.data;
 
   try {
-    await api(`/dashboard/properties/${propertyId}/tenancies`, {
+    await api(`/properties/${propertyId}/tenancies`, {
       method: 'POST',
       body: {
         bedId,

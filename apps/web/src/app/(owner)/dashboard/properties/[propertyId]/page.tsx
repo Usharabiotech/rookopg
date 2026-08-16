@@ -15,7 +15,7 @@ type Params = Promise<{ propertyId: string }>;
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { propertyId } = await params;
   try {
-    const property = await api<PropertyDetail>(`/dashboard/properties/${propertyId}`);
+    const property = await api<PropertyDetail>(`/properties/${propertyId}`);
     return { title: property.name };
   } catch {
     return { title: 'Property' };
@@ -32,10 +32,10 @@ export default async function PropertyPage({ params }: { params: Params }) {
 
   try {
     [property, rooms, photos, tenancies] = await Promise.all([
-      api<PropertyDetail>(`/dashboard/properties/${propertyId}`),
-      api<Room[]>(`/dashboard/properties/${propertyId}/rooms`),
-      api<Media[]>(`/dashboard/properties/${propertyId}/media`),
-      api<Tenancy[]>(`/dashboard/properties/${propertyId}/tenancies`),
+      api<PropertyDetail>(`/properties/${propertyId}`),
+      api<Room[]>(`/properties/${propertyId}/rooms`),
+      api<Media[]>(`/properties/${propertyId}/media`),
+      api<Tenancy[]>(`/properties/${propertyId}/tenancies`),
     ]);
   } catch (error) {
     // The API answers 404 for another organisation's property too, so this
