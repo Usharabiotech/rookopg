@@ -1,42 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { amenityLabel } from '@/lib/amenities';
 import { getListing } from '@/lib/public-api';
 import { Badge, Card, LinkButton } from '@/components/ui';
 import { genderLabel, rupeesShort, sharingLabel } from '@/lib/format';
 import type { PublicListing } from '@/lib/types';
 
 type Params = Promise<{ slug: string }>;
-
-const AMENITY_LABELS: Record<string, string> = {
-  WIFI: 'Wi-Fi',
-  AC: 'Air conditioning',
-  LAUNDRY: 'Laundry',
-  HOUSEKEEPING: 'Housekeeping',
-  POWER_BACKUP: 'Power backup',
-  HOT_WATER: 'Hot water',
-  RO_WATER: 'RO drinking water',
-  LIFT: 'Lift',
-  CCTV: 'CCTV',
-  SECURITY_GUARD: 'Security guard',
-  BIKE_PARKING: 'Two-wheeler parking',
-  CAR_PARKING: 'Car parking',
-  STUDY_TABLE: 'Study table',
-  WARDROBE: 'Wardrobe',
-  FRIDGE: 'Refrigerator',
-  TV: 'Television',
-  GYM: 'Gym',
-  DINING_HALL: 'Dining hall',
-  COMMON_AREA: 'Common area',
-  KITCHEN_ACCESS: 'Kitchen access',
-  ATTACHED_BATHROOM: 'Attached bathroom',
-  BALCONY: 'Balcony',
-  DAILY_CLEANING: 'Daily cleaning',
-  WASHING_MACHINE: 'Washing machine',
-  BED_LINEN: 'Bed linen provided',
-  BIOMETRIC_ENTRY: 'Biometric entry',
-  FIRE_SAFETY: 'Fire safety',
-};
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
@@ -95,7 +66,7 @@ function StructuredData({ listing }: { listing: PublicListing }) {
     priceRange: `${rupeesShort(listing.fromRentPaise)}+`,
     amenityFeature: listing.amenityCodes.map((code) => ({
       '@type': 'LocationFeatureSpecification',
-      name: AMENITY_LABELS[code] ?? code,
+      name: amenityLabel(code),
       value: true,
     })),
   };
@@ -230,7 +201,7 @@ export default async function ListingPage({ params }: { params: Params }) {
                 <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {listing.amenityCodes.map((code) => (
                     <li key={code} className="text-sm text-[var(--text-muted)]">
-                      {AMENITY_LABELS[code] ?? code.replace(/_/g, ' ').toLowerCase()}
+                      {amenityLabel(code)}
                     </li>
                   ))}
                 </ul>

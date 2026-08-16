@@ -1,19 +1,7 @@
 import Link from 'next/link';
+import { amenityShortLabel, cardAmenities } from '@/lib/amenities';
 import { genderLabel, rupeesShort, sharingLabel } from '@/lib/format';
 import type { ListingCard as Listing } from '@/lib/types';
-
-const AMENITY_LABELS: Record<string, string> = {
-  WIFI: 'Wi-Fi',
-  AC: 'AC',
-  LAUNDRY: 'Laundry',
-  POWER_BACKUP: 'Power backup',
-  HOT_WATER: 'Hot water',
-  CCTV: 'CCTV',
-  BIKE_PARKING: 'Bike parking',
-  ATTACHED_BATHROOM: 'Attached bath',
-  HOUSEKEEPING: 'Housekeeping',
-  GYM: 'Gym',
-};
 
 const FOOD_LABELS: Record<string, string> = {
   VEG: 'Veg food',
@@ -24,7 +12,7 @@ const FOOD_LABELS: Record<string, string> = {
 
 export function ListingCard({ listing }: { listing: Listing }) {
   // Only a handful, and only the ones a tenant actually chooses on.
-  const shown = listing.amenityCodes.filter((code) => code in AMENITY_LABELS).slice(0, 4);
+  const shown = cardAmenities(listing.amenityCodes);
 
   return (
     <li>
@@ -76,7 +64,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
             ) : null}
             {shown.map((code) => (
               <li key={code} className="rounded-md bg-[var(--bg-deep)] px-2 py-0.5 text-xs">
-                {AMENITY_LABELS[code]}
+                {amenityShortLabel(code)}
               </li>
             ))}
           </ul>

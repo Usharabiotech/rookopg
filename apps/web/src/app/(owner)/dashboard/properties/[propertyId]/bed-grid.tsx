@@ -102,7 +102,7 @@ function RoomRow({
     .filter((tenancy): tenancy is Tenancy => tenancy !== undefined);
 
   return (
-    <li className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-[var(--border)] py-3.5 first:border-t-0">
+    <li className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-[var(--border)] py-3.5">
       <div className="w-32 shrink-0">
         <p className="figure text-sm font-semibold">
           {room.code}
@@ -204,7 +204,11 @@ export function BedGrid({
                   {floor === 0 ? 'Ground floor' : `Floor ${floor}`} ·{' '}
                   {floorRooms.reduce((n, room) => n + room.beds.length, 0)} beds
                 </h3>
-                <ul>
+                {/* A room row is short and a floor is long, so on a wide
+                    screen they run in two columns. Fourteen rooms stacked one
+                    per row made the owner scroll most of a page to see a
+                    building that fits on one. */}
+                <ul className="grid gap-x-8 xl:grid-cols-2">
                   {floorRooms.map((room) => (
                     <RoomRow key={room.id} room={room} propertyId={propertyId} byBed={byBed} />
                   ))}

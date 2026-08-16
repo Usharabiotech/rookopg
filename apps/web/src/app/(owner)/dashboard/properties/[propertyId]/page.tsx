@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { api, isApiError } from '@/lib/api';
 import { Badge, Card, EmptyState, LinkButton, PageHeader, Stat } from '@/components/ui';
+import { amenityLabel } from '@/lib/amenities';
 import { genderLabel, rupeesShort } from '@/lib/format';
 import type { Media, PropertyDetail, Room, Tenancy } from '@/lib/types';
 import { BedGrid } from './bed-grid';
@@ -166,7 +167,7 @@ export default async function PropertyPage({ params }: { params: Params }) {
                 <ul className="flex flex-wrap gap-1.5">
                   {property.amenityCodes.map((code) => (
                     <li key={code}>
-                      <Badge>{code.replace(/_/g, ' ').toLowerCase()}</Badge>
+                      <Badge>{amenityLabel(code)}</Badge>
                     </li>
                   ))}
                 </ul>

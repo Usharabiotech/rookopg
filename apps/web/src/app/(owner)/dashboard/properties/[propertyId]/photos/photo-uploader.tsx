@@ -108,21 +108,6 @@ export function PhotoUploader({ propertyId }: { propertyId: string }) {
         </Alert>
       ) : null}
 
-      <Field label="What do these show?" htmlFor="photo-tag">
-        <Select
-          id="photo-tag"
-          value={tag}
-          onChange={(event) => setTag(event.target.value)}
-          disabled={busy}
-        >
-          {TAGS.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </Select>
-      </Field>
-
       <input
         ref={inputRef}
         id="photo-files"
@@ -134,14 +119,36 @@ export function PhotoUploader({ propertyId }: { propertyId: string }) {
         disabled={busy}
       />
 
-      <Button
-        type="button"
-        fullWidth
-        disabled={busy}
-        onClick={() => inputRef.current?.click()}
-      >
-        {busy ? 'Uploading…' : 'Add photos'}
-      </Button>
+      {/* Stacked on a phone, side by side once there is room. Full width is
+          right on a handset and wrong on a laptop, where the button stretched
+          the width of the card. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="sm:w-64">
+          <Field label="What do these show?" htmlFor="photo-tag">
+            <Select
+              id="photo-tag"
+              value={tag}
+              onChange={(event) => setTag(event.target.value)}
+              disabled={busy}
+            >
+              {TAGS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+
+        <Button
+          type="button"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+          className="w-full sm:w-auto"
+        >
+          {busy ? 'Uploading…' : 'Add photos'}
+        </Button>
+      </div>
 
       <p className="text-xs text-[var(--text-muted)]">
         Up to ten at a time. Photos are shrunk on your phone first, so this works on mobile data.
