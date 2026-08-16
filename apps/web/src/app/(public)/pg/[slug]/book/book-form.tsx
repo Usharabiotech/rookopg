@@ -87,13 +87,13 @@ export function BookForm({
                   value={option.sharingType}
                   checked={sharing === option.sharingType}
                   onChange={() => setSharing(option.sharingType)}
-                  className="size-4 accent-brass-600"
+                  className="size-4 accent-[var(--action)]"
                 />
                 <span>
                   <span className="block text-sm font-semibold">
                     {sharingLabel(option.sharingType)}
                   </span>
-                  <span className="block text-xs text-moss-600">{option.freeBeds} free</span>
+                  <span className="block text-xs text-[var(--ok)]">{option.freeBeds} free</span>
                 </span>
               </span>
               <span className="figure text-sm font-semibold">

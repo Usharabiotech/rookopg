@@ -107,7 +107,7 @@ function RoomRow({
         <p className="figure text-sm font-semibold">
           {room.code}
           {room.hasAc ? (
-            <span className="ml-1.5 font-sans text-[10px] font-medium uppercase tracking-wide text-brass-600">
+            <span className="ml-1.5 font-sans text-[10px] font-medium uppercase tracking-wide text-[var(--accent-text)]">
               AC
             </span>
           ) : null}
@@ -132,7 +132,7 @@ function RoomRow({
         <p
           className={
             'figure text-xs font-medium ' +
-            (free > 0 ? 'text-moss-600' : 'text-[var(--text-muted)]')
+            (free > 0 ? 'text-[var(--ok)]' : 'text-[var(--text-muted)]')
           }
         >
           {free > 0 ? `${free} free` : 'full'}

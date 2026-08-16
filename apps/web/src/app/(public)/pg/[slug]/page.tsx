@@ -164,12 +164,12 @@ export default async function ListingPage({ params }: { params: Params }) {
                     <p className="font-semibold">
                       {sharingLabel(option.sharingType)}
                       {option.hasAc ? (
-                        <span className="ml-2 text-xs font-medium text-brass-600">AC available</span>
+                        <span className="ml-2 text-xs font-medium text-[var(--accent-text)]">AC available</span>
                       ) : null}
                     </p>
                     <p className="mt-0.5 text-sm">
                       {option.freeBeds > 0 ? (
-                        <span className="text-moss-600">{option.freeBeds} beds free</span>
+                        <span className="text-[var(--ok)]">{option.freeBeds} beds free</span>
                       ) : (
                         <span className="text-[var(--text-muted)]">Currently full</span>
                       )}

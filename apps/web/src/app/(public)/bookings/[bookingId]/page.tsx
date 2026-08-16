@@ -92,7 +92,7 @@ export default async function BookingPage({ params }: { params: Params }) {
         {status.detail ? <p className="mt-3 text-sm">{status.detail}</p> : null}
 
         {awaitingPayment && booking.holdExpiresAt ? (
-          <p className="mt-3 text-xs text-brass-600">
+          <p className="mt-3 text-xs text-[var(--accent-text)]">
             Held until{' '}
             {new Date(booking.holdExpiresAt).toLocaleTimeString('en-IN', {
               hour: '2-digit',

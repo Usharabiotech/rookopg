@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { ThemeToggle, type Theme } from '@/components/theme-toggle';
+import { LEGAL_PAGES } from '@/lib/legal';
 
 async function readTheme(): Promise<Theme> {
   const value = (await cookies()).get('pg_theme')?.value;
@@ -59,6 +60,15 @@ export default async function PublicLayout({ children }: { children: React.React
             </Link>
             .
           </p>
+          {/* Reachable from every page: required by the intermediary rules,
+              and checked by Razorpay before an account is activated. */}
+          <nav aria-label="Legal" className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs">
+            {LEGAL_PAGES.map((page) => (
+              <Link key={page.href} href={page.href} className="hover:text-[var(--text)]">
+                {page.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </footer>
     </div>

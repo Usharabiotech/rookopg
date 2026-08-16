@@ -88,7 +88,7 @@ export default async function HomePage({ searchParams }: { searchParams: Search 
               : `${total} ${total === 1 ? 'place' : 'places'} with a free bed`}
           </h2>
           {filtered ? (
-            <Link href="/" className="text-sm underline hover:text-brass-600">
+            <Link href="/" className="text-sm underline hover:text-[var(--accent-text)]">
               Clear filters
             </Link>
           ) : null}

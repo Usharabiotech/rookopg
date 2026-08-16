@@ -45,7 +45,7 @@ function PropertyCard({ property }: { property: PropertySummary }) {
         </div>
 
         {notSetUp ? (
-          <p className="mt-5 text-sm font-medium text-brass-600">
+          <p className="mt-5 text-sm font-medium text-[var(--accent-text)]">
             No rooms yet — open it to set up the building
           </p>
         ) : (

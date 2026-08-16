@@ -40,12 +40,23 @@
 
   /* Moss — free, available, positive */
   --color-moss-100: #dcece1;
+  --color-moss-300: #6fbb90;
   --color-moss-500: #3d8a63;
   --color-moss-600: #2f6e4e;
   --color-moss-700: #23543c;
 
+  /* Teal — the action. Deliberately cool: brass already means "bed taken",
+     so a warm action colour would read as the same signal. Bright enough to
+     carry a button, dark enough to take ink-950 text at 6:1. */
+  --color-teal-100: #ccf3ee;
+  --color-teal-300: #5fd9c9;
+  --color-teal-500: #12a594;
+  --color-teal-600: #0f8578;
+  --color-teal-700: #0b6459;
+
   /* Rust — errors and destructive actions */
   --color-rust-100: #f8e3dd;
+  --color-rust-300: #e08a72;
   --color-rust-500: #b8503a;
   --color-rust-600: #9a3f2c;
 
@@ -78,6 +89,17 @@
   --rail: var(--color-ink-900);
   --rail-text: var(--color-ink-200);
   --rail-active: #ffffff;
+
+  /* Meaning, not paint. The palette shades above are fixed, so using one
+     directly as text works on paper and fails on ink: moss-600 on a dark
+     surface lands near 3:1, under the 4.5:1 body-text floor. These three
+     carry the meaning and each theme picks a shade that can be read. */
+  --ok: var(--color-moss-600);
+  --accent-text: var(--color-brass-600);
+  --danger-text: var(--color-rust-600);
+  --action: var(--color-teal-500);
+  --action-hover: var(--color-teal-600);
+  --on-action: var(--color-ink-950);
   --shadow-card: 0 1px 2px rgb(16 26 39 / 0.06), 0 1px 3px rgb(16 26 39 / 0.04);
   color-scheme: light;
 }
@@ -100,6 +122,12 @@
     --rail: #070d15;
     --rail-text: #8fa0b8;
     --rail-active: #ffffff;
+    --ok: var(--color-moss-300);
+    --accent-text: var(--color-brass-300);
+    --danger-text: var(--color-rust-300);
+    --action: var(--color-teal-500);
+    --action-hover: var(--color-teal-300);
+    --on-action: var(--color-ink-950);
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
     color-scheme: dark;
   }
@@ -117,6 +145,12 @@
   --rail: #070d15;
   --rail-text: #8fa0b8;
   --rail-active: #ffffff;
+  --ok: var(--color-moss-300);
+  --accent-text: var(--color-brass-300);
+  --danger-text: var(--color-rust-300);
+  --action: var(--color-teal-500);
+  --action-hover: var(--color-teal-300);
+  --on-action: var(--color-ink-950);
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
   color-scheme: dark;
 }
@@ -159,7 +193,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-brass-500);
+  outline: 2px solid var(--action);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -254,4 +288,93 @@ body {
   .pressable:active {
     transform: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Legal prose
+
+   Long documents nobody opens by choice, so the job is legibility rather than
+   personality: one measure, generous leading, headings that let you skim to
+   the clause you came for.
+--------------------------------------------------------------------------- */
+
+.legal h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-size: 1.875rem;
+  line-height: 1.15;
+  margin-bottom: 1.5rem;
+}
+
+.legal h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
+  margin-top: 2.25rem;
+  margin-bottom: 0.625rem;
+}
+
+.legal h3 {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.375rem;
+}
+
+.legal p,
+.legal li {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.legal p {
+  margin-bottom: 0.875rem;
+}
+
+.legal strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.legal ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.875rem;
+}
+
+.legal li {
+  margin-bottom: 0.375rem;
+}
+
+.legal a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Wide on a laptop, scrollable on a phone — never widening the page itself. */
+.legal table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.legal th,
+.legal td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  color: var(--text-muted);
+}
+
+.legal th {
+  background: var(--bg-deep);
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
 }

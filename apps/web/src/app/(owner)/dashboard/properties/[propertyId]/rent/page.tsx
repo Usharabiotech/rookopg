@@ -55,7 +55,7 @@ function TenantRow({ propertyId, tenant }: { propertyId: string; tenant: TenantD
         <div className="text-right">
           <p
             className={
-              'figure text-lg font-semibold ' + (owes ? 'text-rust-500' : 'text-moss-600')
+              'figure text-lg font-semibold ' + (owes ? 'text-rust-500' : 'text-[var(--ok)]')
             }
           >
             {owes ? rupeesShort(tenant.outstandingPaise) : 'Clear'}
@@ -66,7 +66,7 @@ function TenantRow({ propertyId, tenant }: { propertyId: string; tenant: TenantD
             <p className="text-xs text-[var(--text-muted)]">due {formatDate(tenant.oldestDueDate)}</p>
           ) : null}
           {tenant.creditPaise > 0 ? (
-            <p className="text-xs text-moss-600">{rupeesShort(tenant.creditPaise)} in credit</p>
+            <p className="text-xs text-[var(--ok)]">{rupeesShort(tenant.creditPaise)} in credit</p>
           ) : null}
         </div>
       </div>

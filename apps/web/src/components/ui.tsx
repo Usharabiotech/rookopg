@@ -11,7 +11,8 @@ function cx(...classes: Array<string | false | undefined>): string {
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-brass-600 text-white hover:bg-brass-700 disabled:bg-brass-600/50',
+  primary:
+    'bg-[var(--action)] text-[var(--on-action)] hover:bg-[var(--action-hover)] disabled:opacity-50',
   secondary:
     'border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--bg-deep)]',
   ghost: 'text-[var(--text-muted)] hover:bg-[var(--bg-deep)] hover:text-[var(--text)]',
@@ -165,7 +166,7 @@ export function Field({
 const CONTROL_CLASS =
   'w-full min-h-11 rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 text-base ' +
   'text-[var(--text)] placeholder:text-[var(--text-muted)] transition-colors ' +
-  'hover:border-brass-300 focus:border-brass-500';
+  'hover:border-teal-300 focus:border-[var(--action)]';
 
 export function Input({ className, ...props }: ComponentPropsWithoutRef<'input'>) {
   return <input {...props} className={cx(CONTROL_CLASS, className)} />;
@@ -187,9 +188,9 @@ export function Checkbox({
   return (
     <label
       htmlFor={id}
-      className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-[var(--border-strong)] px-3 text-sm transition-colors hover:border-brass-300"
+      className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-[var(--border-strong)] px-3 text-sm transition-colors hover:border-teal-300"
     >
-      <input id={id} type="checkbox" {...props} className="size-4 rounded accent-brass-600" />
+      <input id={id} type="checkbox" {...props} className="size-4 rounded accent-[var(--action)]" />
       <span>{label}</span>
     </label>
   );
@@ -271,8 +272,8 @@ export function Stat({
 }) {
   const colours = {
     default: 'text-[var(--text)]',
-    free: 'text-moss-600',
-    taken: 'text-brass-600',
+    free: 'text-[var(--ok)]',
+    taken: 'text-[var(--accent-text)]',
   };
   return (
     <div>
