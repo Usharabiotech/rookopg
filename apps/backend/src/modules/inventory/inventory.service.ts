@@ -324,6 +324,9 @@ export class InventoryService {
       ...(occupancy?.availableFrom
         ? { availableFrom: occupancy.availableFrom.toISOString().slice(0, 10) }
         : {}),
+      ...(occupancy?.reservedFrom
+        ? { reservedFrom: occupancy.reservedFrom.toISOString().slice(0, 10) }
+        : {}),
     };
   }
 }

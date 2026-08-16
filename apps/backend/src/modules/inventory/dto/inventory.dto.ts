@@ -184,6 +184,11 @@ export class BedDto {
 
   @ApiPropertyOptional({ description: 'When the bed next becomes free, if occupied' })
   availableFrom?: string;
+
+  @ApiPropertyOptional({
+    description: 'Free today but already claimed from this date — cannot be let',
+  })
+  reservedFrom?: string;
 }
 
 export class RoomDto {

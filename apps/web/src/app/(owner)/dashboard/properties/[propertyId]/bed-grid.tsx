@@ -17,11 +17,19 @@ import type { Bed, Room, Tenancy } from '@/lib/types';
   screen-reader text.
 */
 
-type TagState = 'free' | 'taken' | 'blocked';
+type TagState = 'free' | 'taken' | 'reserved' | 'blocked';
 
 function stateOf(bed: Bed): TagState {
   if (bed.status !== 'ACTIVE') return 'blocked';
-  return bed.occupied ? 'taken' : 'free';
+  if (bed.occupied) return 'taken';
+  // Empty tonight, but somebody has already booked it. Drawing this as free
+  // invites the owner to seat a walk-in the database will then refuse.
+  if (bed.reservedFrom) return 'reserved';
+  return 'free';
+}
+
+function onDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
 const TAG_BASE =
@@ -30,6 +38,7 @@ const TAG_BASE =
 const TAG_STYLES: Record<TagState, string> = {
   free: 'border-moss-500/40 bg-moss-100 text-moss-700 hover:border-moss-600 hover:bg-moss-500 hover:text-white',
   taken: 'border-brass-600 bg-brass-500 text-ink-950',
+  reserved: 'border-brass-500/50 bg-brass-100 text-brass-700 border-dashed',
   blocked:
     'border-dashed border-[var(--border-strong)] bg-transparent text-[var(--text-muted)] line-through',
 };
@@ -76,7 +85,9 @@ function KeyTag({
       ? occupant
         ? `${occupant.tenant.fullName} — since ${occupant.startDate}`
         : 'occupied'
-      : 'out of service';
+      : state === 'reserved'
+        ? `booked from ${onDate(bed.reservedFrom!)}`
+        : 'out of service';
 
   return (
     <span title={`Bed ${bed.code} — ${label}`} className={`${TAG_BASE} ${TAG_STYLES[state]}`}>
@@ -97,6 +108,7 @@ function RoomRow({
   byBed: Map<string, Tenancy>;
 }) {
   const free = room.beds.filter((bed) => stateOf(bed) === 'free').length;
+  const reserved = room.beds.filter((bed) => stateOf(bed) === 'reserved').length;
   const occupants = room.beds
     .map((bed) => byBed.get(bed.id))
     .filter((tenancy): tenancy is Tenancy => tenancy !== undefined);
@@ -137,6 +149,11 @@ function RoomRow({
         >
           {free > 0 ? `${free} free` : 'full'}
         </p>
+        {reserved > 0 ? (
+          <p className="figure mt-0.5 text-[11px] text-[var(--accent-text)]">
+            {reserved} booked ahead
+          </p>
+        ) : null}
         {occupants.length > 0 ? (
           <p className="mt-0.5 max-w-40 truncate text-xs text-[var(--text-muted)]">
             {occupants.map((tenancy) => tenancy.tenant.fullName.split(' ')[0]).join(', ')}
@@ -174,6 +191,10 @@ export function BedGrid({
         </span>
         <span className="flex items-center gap-1.5">
           <span className="size-3 rounded-sm border border-brass-600 bg-brass-500" /> occupied
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="size-3 rounded-sm border border-dashed border-brass-500/50 bg-brass-100" />{' '}
+          booked ahead
         </span>
         <span className="flex items-center gap-1.5">
           <span className="size-3 rounded-sm border border-dashed border-[var(--border-strong)]" />{' '}

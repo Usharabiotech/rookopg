@@ -12,8 +12,19 @@ const ROOM_INCLUDE = {
 export type RoomWithBeds = Prisma.RoomGetPayload<{ include: typeof ROOM_INCLUDE }>;
 
 export interface BedOccupancy {
+  /** Somebody is in it today. */
   occupied: boolean;
+  /** When an occupied bed next frees up. */
   availableFrom: Date | null;
+  /**
+   * Free today, but already claimed from this date on.
+   *
+   * A bed booked for next month is not a bed you can let, and the board used
+   * to draw it as free: the query only looked at claims that had already
+   * started. The owner would tap it, try to seat a walk-in, and get an
+   * overlap error out of the database with nothing to explain it.
+   */
+  reservedFrom: Date | null;
 }
 
 @Injectable()
@@ -135,24 +146,32 @@ export class InventoryRepository {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
+    // Every live claim from today onward, not only the ones already running.
     const allocations = await this.prisma.bedAllocation.findMany({
       where: {
         bedId: { in: bedIds },
         status: AllocationStatus.ACTIVE,
-        startDate: { lte: today },
         OR: [{ endDate: null }, { endDate: { gt: today } }],
       },
-      select: { bedId: true, endDate: true },
+      select: { bedId: true, startDate: true, endDate: true },
+      orderBy: { startDate: 'asc' },
     });
 
     for (const bedId of bedIds) {
-      result.set(bedId, { occupied: false, availableFrom: null });
+      result.set(bedId, { occupied: false, availableFrom: null, reservedFrom: null });
     }
+
     for (const allocation of allocations) {
-      result.set(allocation.bedId, {
-        occupied: true,
-        availableFrom: allocation.endDate,
-      });
+      const current = result.get(allocation.bedId);
+      if (!current) continue;
+
+      if (allocation.startDate <= today) {
+        current.occupied = true;
+        current.availableFrom = allocation.endDate;
+      } else if (current.reservedFrom === null) {
+        // Ordered by start date, so the first future claim is the nearest one.
+        current.reservedFrom = allocation.startDate;
+      }
     }
 
     return result;

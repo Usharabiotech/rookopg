@@ -98,6 +98,7 @@ export interface Bed {
   rentPaise: number;
   occupied: boolean;
   availableFrom?: string;
+  reservedFrom?: string;
 }
 
 export type SharingType = 'SINGLE' | 'DOUBLE' | 'TRIPLE' | 'QUAD' | 'DORMITORY';
