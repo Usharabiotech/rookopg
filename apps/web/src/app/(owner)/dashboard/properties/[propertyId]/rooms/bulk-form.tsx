@@ -147,6 +147,7 @@ export function BulkRoomForm({
                   id={`floor-${index}-count`}
                   name={`floor-${index}-count`}
                   inputMode="numeric"
+                  required
                   className="figure"
                   placeholder="3"
                   value={set.roomCount}
@@ -158,6 +159,7 @@ export function BulkRoomForm({
                 <Select
                   id={`floor-${index}-sharing`}
                   name={`floor-${index}-sharing`}
+                  required
                   value={set.sharing}
                   onChange={(e) => update(set.key, { sharing: e.target.value })}
                 >
@@ -175,6 +177,7 @@ export function BulkRoomForm({
                     id={`floor-${index}-capacity`}
                     name={`floor-${index}-capacity`}
                     inputMode="numeric"
+                    required
                     className="figure"
                     placeholder="8"
                     value={set.capacity}
@@ -197,6 +200,7 @@ export function BulkRoomForm({
                   <Select
                     id={`floor-${index}-gender`}
                     name={`floor-${index}-gender`}
+                    required
                     value={set.gender}
                     onChange={(e) => update(set.key, { gender: e.target.value })}
                   >
@@ -232,6 +236,7 @@ export function BulkRoomForm({
                   id={`floor-${index}-rent`}
                   name={`floor-${index}-rent`}
                   inputMode="numeric"
+                  required
                   className="figure"
                   placeholder="7000"
                   value={set.rent}
