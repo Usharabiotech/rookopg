@@ -25,6 +25,17 @@ const WEB = 'http://localhost:3000';
 /** Distinguishes this run's fixture from anything already in the database. */
 const RUN = `t${Date.now().toString(36).slice(-6)}`;
 
+/**
+ * A fresh phone per actor per run.
+ *
+ * Fixed numbers made this runnable roughly five times an hour: requesting an
+ * OTP is rate limited to five per number per hour, correctly, and the sixth
+ * run of the day would fail at sign-in with nothing to do but wait. Deriving
+ * the numbers from the clock keeps every run independent.
+ */
+const STAMP = String(Date.now()).slice(-6);
+const phone = (n) => `9${STAMP}${String(n).padStart(3, '0')}`;
+
 let passed = 0;
 let failed = 0;
 const failures = [];
@@ -115,10 +126,10 @@ const GACHIBOWLI = byName('Gachibowli');
 const KONDAPUR = byName('Kondapur');
 
 section('Actors');
-const ownerA = await signIn('9800000001');
-const ownerB = await signIn('9811111222');
-const tenant1 = await signIn('9700555111');
-const tenant2 = await signIn('9700555222');
+const ownerA = await signIn(phone(1));
+const ownerB = await signIn(phone(2));
+const tenant1 = await signIn(phone(3));
+const tenant2 = await signIn(phone(4));
 check('owner A signs in', Boolean(ownerA.accessToken));
 check('owner B signs in', Boolean(ownerB.accessToken));
 check('tenant 1 signs in', Boolean(tenant1.accessToken));
@@ -436,6 +447,7 @@ check('replaying the same webhook is harmless', replay.status === 200 || replay.
 const afterReplay = await call(`/bookings/${booking.id}`, { token: tenant1.accessToken });
 check('the booking did not change on replay', afterReplay.status === afterPay.status);
 
+
 // ---------------------------------------------------------------------------
 section('Availability reflects what has been taken');
 
@@ -493,7 +505,7 @@ const TODAY = new Date().toISOString().slice(0, 10);
 const walkIn = await call(`/properties/${A.id}/tenancies`, {
   method: 'POST', token: ownerA.accessToken, raw: true,
   body: {
-    bedId: freeBed.id, fullName: `Walk In ${RUN}`, phone: '9700555333',
+    bedId: freeBed.id, fullName: `Walk In ${RUN}`, phone: phone(8),
     startDate: TODAY, agreedRentPaise: 700_000, depositPaise: 1_000_000,
   },
 });
@@ -507,23 +519,98 @@ check('that bed now reads as occupied today', stillFree?.occupied === true,
 const doubleSeat = await call(`/properties/${A.id}/tenancies`, {
   method: 'POST', token: ownerA.accessToken, raw: true,
   body: {
-    bedId: freeBed.id, fullName: `Second Person ${RUN}`, phone: '9700555444',
+    bedId: freeBed.id, fullName: `Second Person ${RUN}`, phone: phone(9),
     startDate: TODAY, agreedRentPaise: 700_000, depositPaise: 0,
   },
 });
 check('the same bed cannot be let twice', doubleSeat.status === 409, `got ${doubleSeat.status}`);
 
 // ---------------------------------------------------------------------------
+section('Move-in: the pass, the scan, and the money');
+
+// Confirmation is what issues the pass. Whether that happens on payment or on
+// owner approval depends on the property, so take whichever route applies.
+let confirmed = await call(`/bookings/${booking.id}`, { token: tenant1.accessToken });
+if (confirmed.status === 'PENDING_APPROVAL') {
+  await call(`/bookings/${booking.id}/approve`, { method: 'POST', token: ownerA.accessToken, body: {} });
+  confirmed = await call(`/bookings/${booking.id}`, { token: tenant1.accessToken });
+}
+check('a paid booking reaches CONFIRMED', confirmed.status === 'CONFIRMED', confirmed.status);
+
+const pass = await call(`/bookings/${booking.id}/pass`, { token: tenant1.accessToken, raw: true });
+check('the tenant is issued a move-in pass', pass.status === 200, `got ${pass.status}`);
+check('it carries a QR value', typeof pass.body?.token === 'string' && pass.body.token.length > 20);
+check('and six digits under it', /^\d{6}$/.test(pass.body?.shortCode ?? ''), pass.body?.shortCode);
+check('it is not yet used', pass.body?.used === false);
+
+const notMyPass = await call(`/bookings/${booking.id}/pass`, { token: tenant2.accessToken, raw: true });
+check('another tenant cannot fetch that pass', notMyPass.status === 404, `got ${notMyPass.status}`);
+const ownerWantsPass = await call(`/bookings/${booking.id}/pass`, { token: ownerA.accessToken, raw: true });
+check('nor can the owner — that is the whole point', ownerWantsPass.status === 404, `got ${ownerWantsPass.status}`);
+
+const guessed = await call(`/properties/${A.id}/checkin`, {
+  method: 'POST', token: ownerA.accessToken, raw: true, body: { shortCode: '000000' },
+});
+check('a guessed code checks nobody in', guessed.status === 404, `got ${guessed.status}`);
+
+const wrongBuilding = await call(`/properties/${B.id}/checkin`, {
+  method: 'POST', token: ownerA.accessToken, raw: true, body: { token: pass.body.token },
+});
+check('a pass cannot be redeemed at the wrong building', wrongBuilding.status === 404, `got ${wrongBuilding.status}`);
+
+const strangerScans = await call(`/properties/${A.id}/checkin`, {
+  method: 'POST', token: ownerB.accessToken, raw: true, body: { token: pass.body.token },
+});
+check('an unrelated owner cannot scan it', strangerScans.status === 404, `got ${strangerScans.status}`);
+
+const tenantScansSelf = await call(`/properties/${A.id}/checkin`, {
+  method: 'POST', token: tenant1.accessToken, raw: true, body: { token: pass.body.token },
+});
+check('the tenant cannot check themselves in', tenantScansSelf.status === 404, `got ${tenantScansSelf.status}`);
+
+const settlementBefore = await call(`/bookings/${booking.id}`, { token: tenant1.accessToken });
+check('the money is still held before anyone arrives',
+  settlementBefore.settlementStatus === undefined || settlementBefore.settlementStatus === 'HELD',
+  settlementBefore.settlementStatus);
+
+const scanned = await call(`/properties/${A.id}/checkin`, {
+  method: 'POST', token: ownerA.accessToken, raw: true, body: { token: pass.body.token },
+});
+check('the owner scanning the pass checks the tenant in', scanned.status === 201 || scanned.status === 200,
+  `${scanned.status} ${JSON.stringify(scanned.body).slice(0, 160)}`);
+check('the scan names who arrived', Boolean(scanned.body?.tenantName), JSON.stringify(scanned.body?.tenantName));
+check('and releases the money to the owner', scanned.body?.settlementStatus === 'RELEASED',
+  `${scanned.body?.settlementStatus} / ${scanned.body?.settlementPending ?? ''}`);
+check('the released amount is the owner share, not zero', (scanned.body?.releasedPaise ?? 0) > 0,
+  String(scanned.body?.releasedPaise));
+
+const rescan = await call(`/properties/${A.id}/checkin`, {
+  method: 'POST', token: ownerA.accessToken, raw: true, body: { token: pass.body.token },
+});
+check('the same pass cannot be redeemed twice', rescan.status === 409, `got ${rescan.status}`);
+
+const afterCheckin = await call(`/bookings/${booking.id}`, { token: tenant1.accessToken });
+check('the booking reads as checked in', afterCheckin.status === 'CHECKED_IN', afterCheckin.status);
+
+const usedPass = await call(`/bookings/${booking.id}/pass`, { token: tenant1.accessToken });
+check('the tenant’s pass now shows as used', usedPass.used === true);
+
+const tenancies = await call(`/properties/${A.id}/tenancies`, { token: ownerA.accessToken });
+check('confirmation created a tenancy for the online booking',
+  tenancies.some((t) => t.bookingId === booking.id || t.tenant?.phone?.endsWith(phone(3))),
+  `${tenancies.length} tenancies`);
+
+// ---------------------------------------------------------------------------
 section('Organisation staff — a manager is not an owner');
 
 const invited = await call(`/orgs/${orgA.id}/members`, {
   method: 'POST', token: ownerA.accessToken, raw: true,
-  body: { phone: '9700556001', role: 'MANAGER', propertyIds: [A.id] },
+  body: { phone: phone(5), role: 'MANAGER', propertyIds: [A.id] },
 });
 check('an owner can add a manager', invited.status === 201 || invited.status === 200, `got ${invited.status}`);
 
 if (invited.status < 300) {
-  const manager = await signIn('9700556001');
+  const manager = await signIn(phone(5));
   const managerSeesA = await call(`/properties/${A.id}`, { token: manager.accessToken, raw: true });
   check('the manager can open the property they run', managerSeesA.status === 200, `got ${managerSeesA.status}`);
 
@@ -532,7 +619,7 @@ if (invited.status < 300) {
 
   const managerAddsStaff = await call(`/orgs/${orgA.id}/members`, {
     method: 'POST', token: manager.accessToken, raw: true,
-    body: { phone: '9700556002', role: 'MANAGER' },
+    body: { phone: phone(6), role: 'MANAGER' },
   });
   check('a manager cannot appoint more staff', managerAddsStaff.status === 403, `got ${managerAddsStaff.status}`);
 }
@@ -544,8 +631,8 @@ let platform = null;
 try {
   const { PrismaClient } = await import('../../apps/backend/node_modules/@prisma/client/index.js');
   const prisma = new PrismaClient();
-  await signIn('9700557001');
-  const user = await prisma.user.findFirst({ where: { phone: { endsWith: '9700557001' } } });
+  await signIn(phone(7));
+  const user = await prisma.user.findFirst({ where: { phone: { endsWith: phone(7) } } });
   if (!user) throw new Error('support user not found after sign-in');
   await prisma.platformMembership.upsert({
     where: { userId_role: { userId: user.id, role: 'SUPPORT' } },
@@ -553,7 +640,7 @@ try {
     update: { active: true },
   });
   await prisma.$disconnect();
-  platform = await signIn('9700557001');
+  platform = await signIn(phone(7));
 } catch (error) {
   console.log(`    skipped — could not seed a platform role (${String(error).split('\n')[0]})`);
 }

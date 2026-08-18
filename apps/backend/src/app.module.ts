@@ -10,6 +10,7 @@ import { validateEnv } from './config/env.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { BookingModule } from './modules/booking/booking.module';
+import { CheckinModule } from './modules/checkin/checkin.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { IamModule } from './modules/iam/iam.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
@@ -54,6 +55,7 @@ import { HealthController } from './health.controller';
     SearchModule,
     PaymentsModule,
     BookingModule,
+    CheckinModule,
   ],
   controllers: [HealthController],
   providers: [

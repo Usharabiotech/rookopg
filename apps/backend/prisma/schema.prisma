@@ -798,6 +798,17 @@ model Booking {
   /// When the checkout hold lapses, freeing the bed.
   holdExpiresAt  DateTime? @db.Timestamptz(3)
 
+  /// Escrow. The tenant's money sits at the gateway until they turn up; these
+  /// record where it went and when, so a failed release can be found and
+  /// retried rather than quietly stranding an owner's rent.
+  settlementStatus SettlementStatus @default(HELD)
+  settledAt        DateTime? @db.Timestamptz(3)
+  releasedPaise    Int?
+  refundedPaise    Int?
+  /// Gateway transfer or refund ids, for reconciliation.
+  settlementRef    String?   @db.VarChar(300)
+  settlementError  String?   @db.VarChar(400)
+
   createdById String?  @db.Uuid
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
@@ -820,6 +831,8 @@ model Booking {
   @@index([propertyId, status, moveInDate])
   @@index([tenantUserId, createdAt])
   @@index([status, approvalExpiresAt])
+  /// The backstop job sweeps unsettled bookings whose move-in date has passed.
+  @@index([settlementStatus, moveInDate])
   @@map("bookings")
 }
 
@@ -941,11 +954,33 @@ model TenancyStatusHistory {
 
 /// Only the hash is stored — a leaked database must not yield working QR
 /// codes. Single-use and short-lived; validation is always server-side.
+/// The tenant's move-in pass — a booking's QR, and the code under it.
+///
+/// Issued when a booking is confirmed and shown on the tenant's booking page,
+/// the way a cinema ticket is. The owner or warden scans it on arrival; that
+/// scan is the check-in, and the check-in is what releases the held money.
+///
+/// The owner cannot manufacture one. That is the whole point: a code printed
+/// on the wall would be static and copyable, so an owner could send it to a
+/// tenant sitting at home and collect on a no-show. This token exists only on
+/// that tenant's phone.
+///
+/// Stored readable rather than hashed, deliberately. It is a movement
+/// credential, not a money one: presenting it records an arrival and releases
+/// a payment the tenant already committed to the owner. It cannot redirect
+/// funds. Hashing would cost the tenant the ability to reopen their own pass
+/// on a replacement phone, which is a likelier event than a database breach
+/// in which this is the interesting thing to steal.
 model CheckinToken {
   id        String @id @default(uuid(7)) @db.Uuid
   bookingId String @db.Uuid
 
-  tokenHash String    @unique @db.VarChar(128)
+  /// High-entropy value carried by the QR.
+  token     String    @unique @db.VarChar(64)
+  /// Six digits, for a cracked screen or a camera that will not focus.
+  shortCode String    @db.VarChar(6)
+  /// Guards the short code, which is only a million guesses wide.
+  attempts  Int       @default(0)
   validFrom DateTime  @db.Timestamptz(3)
   validTo   DateTime  @db.Timestamptz(3)
   usedAt    DateTime? @db.Timestamptz(3)
@@ -958,7 +993,27 @@ model CheckinToken {
   usedBy  User?   @relation("CheckinTokenUsedBy", fields: [usedById], references: [id], onDelete: SetNull)
 
   @@index([bookingId, revokedAt])
+  /// The manual-code path looks a booking up by code within one property.
+  @@index([shortCode])
   @@map("checkin_tokens")
+}
+
+/// Where a booking's money has got to.
+///
+/// Separate from BookingStatus because the two genuinely diverge: a tenant can
+/// be checked in while the release is still failing at the gateway, and that
+/// gap is exactly what the retry job looks for.
+enum SettlementStatus {
+  /// Paid by the tenant, held at the gateway, owner not yet paid.
+  HELD
+  /// Tenant arrived; the owner has their share.
+  RELEASED
+  /// Cancelled or refused; the tenant has their money back.
+  REFUNDED
+  /// No-show: the owner kept the rent, the deposit went back.
+  SPLIT
+  /// The gateway call failed. The job retries these.
+  FAILED
 }
 
 enum CheckinKind {

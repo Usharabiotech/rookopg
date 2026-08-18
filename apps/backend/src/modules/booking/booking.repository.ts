@@ -6,6 +6,7 @@ import {
   BookingStatus,
   PaymentMethod,
   PaymentStatus,
+  TenancyStatus,
   UserStatus,
   type Prisma,
 } from '@prisma/client';
@@ -251,6 +252,8 @@ export class BookingRepository {
     approvalExpiresAt: Date;
     /// When the property confirms automatically, payment is the last step.
     autoConfirm: boolean;
+    /// Only used on the auto-confirm route, where payment is confirmation.
+    pass: { token: string; shortCode: string; validTo: Date };
   }): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       /*
@@ -301,6 +304,10 @@ export class BookingRepository {
         },
       });
 
+      if (input.autoConfirm) {
+        await this.onConfirmed(tx, input.bookingId, input.pass);
+      }
+
       await tx.bookingStatusHistory.create({
         data: {
           bookingId: input.bookingId,
@@ -311,6 +318,86 @@ export class BookingRepository {
             : 'Payment received',
         },
       });
+    });
+  }
+
+  /**
+   * Everything that must happen the moment a booking becomes real.
+   *
+   * Confirmation arrives by two routes — payment on a property that confirms
+   * automatically, and an owner accepting — and both owe the tenant the same
+   * things: a tenancy, and the pass they will show at the door. Keeping it in
+   * one place is why a booking cannot end up confirmed with no way to check in.
+   *
+   * Runs inside the caller's transaction. No gateway calls belong here: money
+   * moves at check-in, not at confirmation, and a network call inside a
+   * transaction is how this project already lost eight requests to a timeout.
+   */
+  private async onConfirmed(
+    tx: Prisma.TransactionClient,
+    bookingId: string,
+    pass: { token: string; shortCode: string; validTo: Date },
+  ): Promise<void> {
+    const booking = await tx.booking.findUniqueOrThrow({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        orgId: true,
+        propertyId: true,
+        bedId: true,
+        tenantUserId: true,
+        moveInDate: true,
+        agreedRentPaise: true,
+        agreedDepositPaise: true,
+        noticeDays: true,
+        tenancy: { select: { id: true } },
+      },
+    });
+
+    // Confirming twice must not make a second tenancy. The owner-approval
+    // route can be retried, and a redelivered webhook lands here too.
+    if (booking.tenancy) return;
+
+    const tenancy = await tx.tenancy.create({
+      data: {
+        orgId: booking.orgId,
+        propertyId: booking.propertyId,
+        bedId: booking.bedId,
+        tenantUserId: booking.tenantUserId,
+        bookingId: booking.id,
+        startDate: booking.moveInDate,
+        agreedRentPaise: booking.agreedRentPaise,
+        depositPaise: booking.agreedDepositPaise,
+        // Rent falls due on the day they moved in, every month after.
+        cycleAnchorDay: booking.moveInDate.getUTCDate(),
+        noticeDays: booking.noticeDays,
+        status: TenancyStatus.ACTIVE,
+      },
+      select: { id: true },
+    });
+
+    await tx.tenancyStatusHistory.create({
+      data: {
+        tenancyId: tenancy.id,
+        toStatus: TenancyStatus.ACTIVE,
+        reason: 'Booking confirmed',
+      },
+    });
+
+    // The claim on the bed stops being a booking and becomes a tenancy.
+    await tx.bedAllocation.updateMany({
+      where: { bookingId: booking.id, status: AllocationStatus.ACTIVE },
+      data: { kind: AllocationKind.TENANCY, tenancyId: tenancy.id },
+    });
+
+    await tx.checkinToken.create({
+      data: {
+        bookingId: booking.id,
+        token: pass.token,
+        shortCode: pass.shortCode,
+        validFrom: new Date(),
+        validTo: pass.validTo,
+      },
     });
   }
 
@@ -355,7 +442,11 @@ export class BookingRepository {
     });
   }
 
-  async approve(bookingId: string, actorId: string): Promise<void> {
+  async approve(
+    bookingId: string,
+    actorId: string,
+    pass: { token: string; shortCode: string; validTo: Date },
+  ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await tx.booking.update({
         where: { id: bookingId },
@@ -374,6 +465,8 @@ export class BookingRepository {
           reason: 'Owner accepted the booking',
         },
       });
+
+      await this.onConfirmed(tx, bookingId, pass);
     });
   }
 

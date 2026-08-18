@@ -47,6 +47,17 @@ export class CryptoService {
     return randomBytes(CHECKIN_TOKEN_BYTES).toString('base64url');
   }
 
+  /**
+   * The six digits printed under the move-in QR, for when a camera will not
+   * cooperate. Narrow enough to read down a phone line, so the guard against
+   * guessing is the attempt counter on the row, not the width of the code.
+   */
+  generateCheckinShortCode(): string {
+    return randomInt(0, 10 ** OTP_DIGITS)
+      .toString()
+      .padStart(OTP_DIGITS, '0');
+  }
+
   /** Constant-time comparison. A plain === leaks length and content by timing. */
   safeEquals(a: string, b: string): boolean {
     const bufA = Buffer.from(a, 'utf8');

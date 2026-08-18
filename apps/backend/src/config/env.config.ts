@@ -65,6 +65,12 @@ const envSchema = z.object({
    * `razorpay` is Razorpay Route: the tenant pays once and the split happens
    * at source, so the platform never holds funds.
    */
+  /**
+   * How long after move-in a tenant can still check in — and the deadline the
+   * no-show sweep works to. Past this, nobody arrived: the owner keeps the
+   * rent for the bed they held empty, the deposit goes back to the tenant.
+   */
+  CHECKIN_GRACE_DAYS: z.coerce.number().int().min(1).max(60).default(7),
   PAYMENT_GATEWAY: z.enum(['dev', 'razorpay']).default('dev'),
   /** Signs development webhooks. Irrelevant when the driver is razorpay. */
   DEV_WEBHOOK_SECRET: z.string().default('dev-webhook-secret'),

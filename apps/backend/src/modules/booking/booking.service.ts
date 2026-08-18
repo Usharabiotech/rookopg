@@ -10,6 +10,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from '../../common/errors/domain.error';
+import { CryptoService } from '../../common/crypto/crypto.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { IamService } from '../iam/iam.service';
 import { SearchRepository } from '../search/search.repository';
@@ -40,6 +41,7 @@ export class BookingService {
   private readonly approvalHours: number;
   private readonly commissionBps: number;
   private readonly convenienceFeePaise: number;
+  private readonly checkinGraceDays: number;
 
   constructor(
     config: ConfigService<AppConfig, true>,
@@ -47,12 +49,32 @@ export class BookingService {
     private readonly listings: SearchRepository,
     private readonly iam: IamService,
     private readonly prisma: PrismaService,
+    private readonly crypto: CryptoService,
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {
     this.holdMinutes = config.get('BOOKING_HOLD_MINUTES', { infer: true });
     this.approvalHours = config.get('BOOKING_APPROVAL_HOURS', { infer: true });
     this.commissionBps = config.get('PLATFORM_COMMISSION_BPS', { infer: true });
     this.convenienceFeePaise = config.get('PLATFORM_CONVENIENCE_FEE_PAISE', { infer: true });
+    this.checkinGraceDays = config.get('CHECKIN_GRACE_DAYS', { infer: true });
+  }
+
+  /**
+   * A fresh move-in pass: the value behind the QR, and the digits under it.
+   *
+   * Valid from now — the tenant should see it the moment they are confirmed —
+   * until the grace period after move-in runs out, which is the same deadline
+   * the no-show sweep works to.
+   */
+  private newPass(moveInDate: Date): { token: string; shortCode: string; validTo: Date } {
+    const validTo = new Date(moveInDate);
+    validTo.setUTCDate(validTo.getUTCDate() + this.checkinGraceDays);
+    validTo.setUTCHours(23, 59, 59, 999);
+    return {
+      token: this.crypto.generateCheckinToken(),
+      shortCode: this.crypto.generateCheckinShortCode(),
+      validTo,
+    };
   }
 
   /**
@@ -242,6 +264,7 @@ export class BookingService {
       gatewayOrderId: event.orderId ?? '',
       approvalExpiresAt: new Date(Date.now() + this.approvalHours * 3_600_000),
       autoConfirm: booking.property.autoConfirmBookings,
+      pass: this.newPass(booking.moveInDate),
     });
 
     const outcome = booking.property.autoConfirmBookings
@@ -308,7 +331,7 @@ export class BookingService {
     if (booking.status !== BookingStatus.PENDING_APPROVAL) {
       throw new ConflictError('This booking is not waiting for a decision.');
     }
-    await this.repository.approve(bookingId, actor.userId);
+    await this.repository.approve(bookingId, actor.userId, this.newPass(booking.moveInDate));
     return this.toDto((await this.repository.findById(bookingId))!);
   }
 
