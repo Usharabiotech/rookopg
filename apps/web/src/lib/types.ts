@@ -367,3 +367,27 @@ export interface ApiErrorBody {
   message: string;
   details?: Record<string, unknown>;
 }
+
+/** The tenant's move-in pass: the QR value, and the digits under it. */
+export interface MovePass {
+  token: string;
+  shortCode: string;
+  validFrom: string;
+  validTo: string;
+  used: boolean;
+  propertyName: string;
+  roomCode: string;
+  bedCode: string;
+}
+
+/** What the owner sees after redeeming one. */
+export interface CheckinResult {
+  bookingId: string;
+  tenantName: string;
+  roomCode: string;
+  bedCode: string;
+  moveInDate: string;
+  settlementStatus: string;
+  releasedPaise: number;
+  settlementPending?: string;
+}

@@ -91,6 +91,15 @@ export class BookingService {
   ): Promise<CheckoutDto> {
     const idempotencyKey = dto.idempotencyKey ?? randomUUID();
 
+    // Fill in the name if we do not have one. Never overwrite: the account
+    // holder's own name outranks whatever was typed into a booking form.
+    if (dto.fullName?.trim()) {
+      await this.prisma.user.updateMany({
+        where: { id: actor.userId, OR: [{ fullName: null }, { fullName: '' }] },
+        data: { fullName: dto.fullName.trim().slice(0, 120) },
+      });
+    }
+
     // A retried request returns the original booking rather than holding a
     // second bed for the same person.
     const existing = await this.repository.findByIdempotencyKey(idempotencyKey);

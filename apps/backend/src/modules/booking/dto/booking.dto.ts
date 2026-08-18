@@ -22,6 +22,21 @@ export class CreateBookingDto {
   @IsDateString({ strict: true } as never)
   moveInDate!: string;
 
+  /**
+   * Who is moving in.
+   *
+   * Signing in takes only a phone number, so without this the owner has a
+   * booking from nobody: the arrivals queue and the check-in screen both had
+   * nothing to show but the word "Tenant", which is no use to a warden trying
+   * to match the person at the door. Only recorded when we do not already
+   * know the name.
+   */
+  @ApiPropertyOptional({ example: 'Priya Sharma' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  fullName?: string;
+
   @ApiPropertyOptional({
     description: 'Send the same key to retry safely; a double tap will not book twice.',
   })

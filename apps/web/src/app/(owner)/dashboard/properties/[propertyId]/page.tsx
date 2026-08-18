@@ -66,6 +66,9 @@ export default async function PropertyPage({ params }: { params: Params }) {
             {tenancies.length > 0 ? (
               <LinkButton href={`/dashboard/properties/${property.id}/rent`}>Rent</LinkButton>
             ) : null}
+            <LinkButton href={`/dashboard/properties/${property.id}/checkin`}>
+              Check in
+            </LinkButton>
             <LinkButton
               href={`/dashboard/properties/${property.id}/rooms`}
               variant={rooms.length === 0 ? 'primary' : 'secondary'}

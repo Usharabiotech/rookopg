@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 import { api, isApiError } from '@/lib/api';
 import { Alert, Badge, Button, Card, PageHeader } from '@/components/ui';
 import { formatDate, rupeesShort, sharingLabel } from '@/lib/format';
-import type { Booking } from '@/lib/types';
+import type { Booking, MovePass } from '@/lib/types';
+import { MoveInPass } from './move-in-pass';
 import { cancelBookingAction, simulateDevPaymentAction } from '../../pg/[slug]/book/actions';
 
 export const metadata: Metadata = { title: 'Your booking', robots: { index: false } };
@@ -63,6 +64,18 @@ export default async function BookingPage({ params }: { params: Params }) {
     throw error;
   }
 
+  // Issued at confirmation, so there is nothing to fetch before then. A
+  // failure here must not take the booking page down with it — the tenant
+  // still needs to see what they paid and who to call.
+  let pass: MovePass | null = null;
+  if (booking.status === 'CONFIRMED' || booking.status === 'CHECKED_IN') {
+    try {
+      pass = await api<MovePass>(`/bookings/${bookingId}/pass`);
+    } catch {
+      pass = null;
+    }
+  }
+
   const status = STATUS_COPY[booking.status];
   const awaitingPayment = booking.status === 'PENDING_PAYMENT';
   const cancellable = ['PENDING_PAYMENT', 'PENDING_APPROVAL', 'CONFIRMED'].includes(booking.status);
@@ -101,6 +114,8 @@ export default async function BookingPage({ params }: { params: Params }) {
           </p>
         ) : null}
       </Card>
+
+      {pass ? <MoveInPass pass={pass} /> : null}
 
       <Card className="mb-4">
         <p className="eyebrow mb-3">What you pay</p>

@@ -107,6 +107,19 @@ export function BookForm({
         </div>
       </fieldset>
 
+      {/* The owner is handed a booking from a phone number otherwise. At the
+          door they need a name to match against the person in front of them. */}
+      <Field label="Your name" htmlFor="fullName" required hint="As the PG should expect you">
+        <Input
+          id="fullName"
+          name="fullName"
+          required
+          maxLength={120}
+          autoComplete="name"
+          placeholder="Priya Sharma"
+        />
+      </Field>
+
       <Field label="Moving in on" htmlFor="moveInDate" required>
         <Input
           id="moveInDate"

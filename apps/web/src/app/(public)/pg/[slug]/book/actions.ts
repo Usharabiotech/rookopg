@@ -20,6 +20,11 @@ export async function startBookingAction(
   const sharingType = String(formData.get('sharingType') ?? '');
   const moveInDate = String(formData.get('moveInDate') ?? '');
   const idempotencyKey = String(formData.get('idempotencyKey') ?? '');
+  const fullName = String(formData.get('fullName') ?? '').trim();
+
+  if (!fullName) {
+    return { error: 'Enter your name so the PG knows who to expect.' };
+  }
 
   if (!slug || !sharingType || !moveInDate) {
     return { error: 'Choose a room type and a move-in date.' };
@@ -29,7 +34,7 @@ export async function startBookingAction(
   try {
     checkout = await api<Checkout>('/bookings', {
       method: 'POST',
-      body: { slug, sharingType, moveInDate, idempotencyKey },
+      body: { slug, sharingType, moveInDate, idempotencyKey, fullName },
     });
   } catch (error) {
     if (isApiError(error) && error.isUnauthenticated) {

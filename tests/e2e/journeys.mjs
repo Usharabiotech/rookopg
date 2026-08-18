@@ -369,7 +369,10 @@ section('Tenant');
 
 const checkout = await call('/bookings', {
   method: 'POST', token: tenant1.accessToken, raw: true,
-  body: { slug: A.slug, sharingType: 'TRIPLE', moveInDate: '2026-10-01', idempotencyKey: `t1-${RUN}` },
+  body: {
+    slug: A.slug, sharingType: 'TRIPLE', moveInDate: '2026-10-01',
+    idempotencyKey: `t1-${RUN}`, fullName: 'Priya Sharma',
+  },
 });
 check('a signed-in tenant can start a booking', checkout.status === 201, `got ${checkout.status}`);
 const booking = checkout.body?.booking;
@@ -616,7 +619,9 @@ const scanned = await call(`/properties/${A.id}/checkin`, {
 });
 check('the owner scanning the pass checks the tenant in', scanned.status === 201 || scanned.status === 200,
   `${scanned.status} ${JSON.stringify(scanned.body).slice(0, 160)}`);
-check('the scan names who arrived', Boolean(scanned.body?.tenantName), JSON.stringify(scanned.body?.tenantName));
+// "Tenant" is the fallback, and a warden cannot match that to a face.
+check('the scan names who actually arrived', scanned.body?.tenantName === 'Priya Sharma',
+  JSON.stringify(scanned.body?.tenantName));
 check('and releases the money to the owner', scanned.body?.settlementStatus === 'RELEASED',
   `${scanned.body?.settlementStatus} / ${scanned.body?.settlementPending ?? ''}`);
 check('the released amount is the owner share, not zero', (scanned.body?.releasedPaise ?? 0) > 0,
