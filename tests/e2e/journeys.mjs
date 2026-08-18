@@ -28,12 +28,15 @@ const RUN = `t${Date.now().toString(36).slice(-6)}`;
 /**
  * A fresh phone per actor per run.
  *
- * Fixed numbers made this runnable roughly five times an hour: requesting an
- * OTP is rate limited to five per number per hour, correctly, and the sixth
- * run of the day would fail at sign-in with nothing to do but wait. Deriving
- * the numbers from the clock keeps every run independent.
+ * Fixed numbers made this runnable about five times an hour: an OTP request is
+ * rate limited to five per number per hour, correctly, and the sixth run would
+ * fail at sign-in with nothing to do but wait.
+ *
+ * Deriving them from the clock was not enough either — the low six digits of
+ * a millisecond timestamp repeat every seventeen minutes, so two runs that far
+ * apart collided and hit the same limit. Random, from a billion, does not.
  */
-const STAMP = String(Date.now()).slice(-6);
+const STAMP = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
 const phone = (n) => `9${STAMP}${String(n).padStart(3, '0')}`;
 
 let passed = 0;
@@ -55,15 +58,29 @@ function section(title) {
   console.log(`\n${title}`);
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Backs off when the API throttles us.
+ *
+ * This suite makes a couple of hundred calls against a 120-a-minute limit, so
+ * left alone it throttles itself and reports the failure as a broken feature.
+ * The limit is doing its job; the suite has to live within it.
+ */
 async function call(path, { method = 'GET', body, token, raw = false } = {}) {
-  const response = await fetch(`${API}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-  });
+  let response;
+  for (let attempt = 0; ; attempt += 1) {
+    response = await fetch(`${API}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+    if (response.status !== 429 || attempt >= 6) break;
+    await sleep(5_000);
+  }
   const text = await response.text();
   let parsed = null;
   try {
@@ -552,6 +569,27 @@ const guessed = await call(`/properties/${A.id}/checkin`, {
   method: 'POST', token: ownerA.accessToken, raw: true, body: { shortCode: '000000' },
 });
 check('a guessed code checks nobody in', guessed.status === 404, `got ${guessed.status}`);
+
+// The owner is the one who profits from a false check-in, so guessing has to
+// cost them something. The first version counted attempts on the pass a guess
+// matched, which meant wrong guesses — the only kind an attacker makes — were
+// never counted at all.
+let lockedOut = false;
+for (let i = 0; i < 14; i += 1) {
+  const attempt = await call(`/properties/${A.id}/checkin`, {
+    method: 'POST', token: ownerA.accessToken, raw: true,
+    body: { shortCode: String(100000 + i) },
+  });
+  if (attempt.status === 409) { lockedOut = true; break; }
+}
+check('guessing codes locks the building out', lockedOut,
+  'fourteen wrong codes in a row were all answered normally');
+
+const scanStillWorks = await call(`/properties/${A.id}/checkin`, {
+  method: 'POST', token: ownerA.accessToken, raw: true, body: { shortCode: '222222' },
+});
+check('and the lockout persists for the next guess', scanStillWorks.status === 409,
+  `got ${scanStillWorks.status}`);
 
 const wrongBuilding = await call(`/properties/${B.id}/checkin`, {
   method: 'POST', token: ownerA.accessToken, raw: true, body: { token: pass.body.token },

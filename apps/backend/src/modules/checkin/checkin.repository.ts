@@ -79,6 +79,55 @@ export class CheckinRepository {
     return row.attempts;
   }
 
+  /** Whether typing codes at this building is currently locked out. */
+  async codeLockedUntil(propertyId: string): Promise<Date | null> {
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { checkinCodeLockedUntil: true },
+    });
+    const until = property?.checkinCodeLockedUntil ?? null;
+    return until && until > new Date() ? until : null;
+  }
+
+  /**
+   * Counts a wrong code against the building, and locks out once there have
+   * been too many.
+   *
+   * Against the building rather than against a pass, because a wrong guess
+   * matches no pass — the version that counted per pass only ever saw correct
+   * guesses, so it stopped nothing.
+   */
+  async recordCodeFailure(
+    propertyId: string,
+    threshold: number,
+    lockoutMinutes: number,
+  ): Promise<{ failures: number; lockedUntil: Date | null }> {
+    const property = await this.prisma.property.update({
+      where: { id: propertyId },
+      data: { checkinCodeFailures: { increment: 1 } },
+      select: { checkinCodeFailures: true },
+    });
+
+    if (property.checkinCodeFailures < threshold) {
+      return { failures: property.checkinCodeFailures, lockedUntil: null };
+    }
+
+    const lockedUntil = new Date(Date.now() + lockoutMinutes * 60_000);
+    await this.prisma.property.update({
+      where: { id: propertyId },
+      data: { checkinCodeLockedUntil: lockedUntil, checkinCodeFailures: 0 },
+    });
+    return { failures: property.checkinCodeFailures, lockedUntil };
+  }
+
+  /** A correct code clears the run of failures behind it. */
+  async clearCodeFailures(propertyId: string): Promise<void> {
+    await this.prisma.property.updateMany({
+      where: { id: propertyId, checkinCodeFailures: { gt: 0 } },
+      data: { checkinCodeFailures: 0, checkinCodeLockedUntil: null },
+    });
+  }
+
   /**
    * Records the arrival, and nothing else.
    *

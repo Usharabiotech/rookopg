@@ -20,6 +20,15 @@ const STAFF_ROLES: OrgRole[] = [OrgRole.OWNER, OrgRole.MANAGER];
 /** Enough wrong six-digit guesses to be a mistake; more is someone trying. */
 const MAX_CODE_ATTEMPTS = 10;
 
+/**
+ * How long typed codes are refused after too many misses.
+ *
+ * Ten tries then a fifteen-minute wait turns a million-code search into
+ * roughly three years of continuous guessing, while a warden who fat-fingers
+ * a digit twice notices nothing.
+ */
+const CODE_LOCKOUT_MINUTES = 15;
+
 @Injectable()
 export class CheckinService {
   private readonly logger = new Logger(CheckinService.name);
@@ -99,6 +108,17 @@ export class CheckinService {
       throw new ConflictError('Scan the QR or type the six-digit code.');
     }
 
+    // Typing codes is the guessable path, so it is the one that gets locked.
+    // Scanning is unaffected: a 192-bit token is not going to be guessed.
+    if (dto.shortCode) {
+      const lockedUntil = await this.repository.codeLockedUntil(propertyId);
+      if (lockedUntil) {
+        throw new ConflictError(
+          'Too many wrong codes at this property. Scan the QR, or try again shortly.',
+        );
+      }
+    }
+
     const pass = dto.token
       ? await this.repository.findByToken(dto.token)
       : await this.repository.findByShortCode(propertyId, dto.shortCode!);
@@ -107,10 +127,28 @@ export class CheckinService {
     // the wrong place, and saying so is the difference between a warden
     // realising their mistake and them retyping it five times.
     if (!pass || pass.booking.propertyId !== propertyId) {
+      // A miss has to be counted here, before the early return. Counting it
+      // on the pass could not work: a wrong guess has no pass to count on, so
+      // only correct guesses were ever counted and six digits sat open to
+      // enumeration by the one person who profits from a false check-in.
+      if (dto.shortCode) {
+        const { lockedUntil } = await this.repository.recordCodeFailure(
+          propertyId,
+          MAX_CODE_ATTEMPTS,
+          CODE_LOCKOUT_MINUTES,
+        );
+        if (lockedUntil) {
+          this.logger.warn(
+            `Check-in codes locked at property ${propertyId} until ${lockedUntil.toISOString()} — ` +
+              `${MAX_CODE_ATTEMPTS} wrong codes`,
+          );
+        }
+      }
       throw new NotFoundError('Move-in pass');
     }
 
     if (dto.shortCode) {
+      await this.repository.clearCodeFailures(propertyId);
       const attempts = await this.repository.countAttempt(pass.id);
       if (attempts > MAX_CODE_ATTEMPTS) {
         this.logger.warn(`Check-in code for booking ${pass.booking.id} tried ${attempts} times`);

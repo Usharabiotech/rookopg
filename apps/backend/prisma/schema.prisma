@@ -306,6 +306,16 @@ model Property {
   autoConfirmBookings Boolean @default(false)
 
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  /// Wrong move-in codes typed at this building, and a lockout once there
+  /// have been too many.
+  ///
+  /// The counter belongs here rather than on the pass, because a wrong guess
+  /// matches no pass at all — counting per pass meant only correct guesses
+  /// were ever counted, which left six digits open to enumeration by the one
+  /// person who profits from a false check-in.
+  checkinCodeFailures    Int       @default(0)
+  checkinCodeLockedUntil DateTime? @db.Timestamptz(3)
+
   updatedAt DateTime  @updatedAt @db.Timestamptz(3)
   deletedAt DateTime? @db.Timestamptz(3)
 
