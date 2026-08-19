@@ -29,7 +29,7 @@ async function bootstrap(): Promise<void> {
    * One hop only. Trusting the whole chain would let a caller forge
    * X-Forwarded-For and hand themselves a fresh quota per request.
    */
-  if (nodeEnv === 'production') {
+  if (config.get('TRUST_PROXY', { infer: true })) {
     app.getHttpAdapter().getInstance().set('trust proxy', 1);
   }
 
@@ -51,7 +51,7 @@ async function bootstrap(): Promise<void> {
 
   app.enableShutdownHooks();
 
-  if (nodeEnv !== 'production') {
+  if (nodeEnv !== 'production' && !config.get('DEPLOY_GATE_TOKEN', { infer: true })) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('PG Platform API')
       .setDescription('PG and hostel marketplace and management platform')

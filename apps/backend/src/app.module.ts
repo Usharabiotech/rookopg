@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { DeployGateGuard } from './common/guards/deploy-gate.guard';
 import { CryptoModule } from './common/crypto/crypto.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { PrismaModule } from './common/prisma/prisma.module';
@@ -60,6 +61,9 @@ import { HealthController } from './health.controller';
   controllers: [HealthController],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    // First guard registered runs first: a caller without the shared token
+    // should not reach the rate limiter, let alone a route.
+    { provide: APP_GUARD, useClass: DeployGateGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     // Everything is authenticated unless a route opts out with @Public().
     // Fail-closed: forgetting a guard cannot expose an endpoint.

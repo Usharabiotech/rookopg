@@ -71,6 +71,25 @@ const envSchema = z.object({
    * rent for the bed they held empty, the deposit goes back to the tenant.
    */
   CHECKIN_GRACE_DAYS: z.coerce.number().int().min(1).max(60).default(7),
+  /**
+   * Shuts a non-production deployment behind a shared token.
+   *
+   * Unset for local development. Set on any deployment that is reachable from
+   * the internet while NODE_ENV is not production — otherwise the login code
+   * comes back in the response and anyone can sign in as anyone.
+   */
+  DEPLOY_GATE_TOKEN: z.string().min(16).optional(),
+
+  /**
+   * Whether a proxy sits in front of us.
+   *
+   * Railway and Vercel both do. Without it every request looks like it came
+   * from the proxy, so the rate limiter throttles all users as one. Gating
+   * this on NODE_ENV was wrong: a test deployment is not production and is
+   * still behind a proxy.
+   */
+  TRUST_PROXY: z.coerce.boolean().default(false),
+
   PAYMENT_GATEWAY: z.enum(['dev', 'razorpay']).default('dev'),
   /** Signs development webhooks. Irrelevant when the driver is razorpay. */
   DEV_WEBHOOK_SECRET: z.string().default('dev-webhook-secret'),

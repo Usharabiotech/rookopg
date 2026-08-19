@@ -1,3 +1,4 @@
+import { gateHeaders } from '@/lib/api';
 import { NextResponse, type NextRequest } from 'next/server';
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:3001/api/v1';
@@ -24,7 +25,7 @@ export async function GET(
   try {
     const upstream = await fetch(
       `${API_BASE_URL}/public/photos/${mediaId}?variant=${variant}`,
-      { next: { revalidate: 3600 } },
+      { next: { revalidate: 3600 }, headers: gateHeaders() },
     );
 
     if (!upstream.ok || !upstream.body) {

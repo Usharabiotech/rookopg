@@ -46,6 +46,55 @@ Not enforced by the app, but the deploy is useless without it:
 
 ---
 
+## Deploying for testing, before Razorpay
+
+This is the path to use while KYC is in progress.
+
+The API refuses to start in production without Razorpay and R2. But there is a
+sharper reason a test deployment cannot run as production: **nothing sends the
+login code yet.** In production the code is not returned in the sign-in
+response and no WhatsApp or SMS exists, so nobody could sign in at all —
+including you.
+
+So a test deployment runs with `NODE_ENV=development`, which returns the code
+in the response and lets the development payment gateway confirm bookings
+without money. That is exactly as dangerous as it sounds on a public URL, so
+both halves get a shared password:
+
+```
+# Railway (API)
+NODE_ENV=development
+DEPLOY_GATE_TOKEN=<openssl rand -base64 32>
+TRUST_PROXY=true
+PAYMENT_GATEWAY=dev
+DEV_WEBHOOK_SECRET=<any long random string>
+STORAGE_DRIVER=local        # photos vanish on redeploy; acceptable for a test
+CORS_ORIGINS=https://<your-app>.vercel.app
+# plus DATABASE_URL and the three secrets from the production list
+
+# Vercel (web)
+API_BASE_URL=https://<api>.up.railway.app/api/v1
+COOKIE_SECURE=1
+DEPLOY_GATE_TOKEN=<the same token as the API>
+SITE_PASSWORD=<a password you share with testers>
+```
+
+`SITE_PASSWORD` puts a browser prompt on the whole site — username
+`pgplatform`. `DEPLOY_GATE_TOKEN` shuts the API to anything that does not
+present it, so finding the Railway URL directly gets a 404 rather than the
+ability to sign in as anybody. Both are unset in real production, where the
+gate is off and the login code is never returned.
+
+While `SITE_PASSWORD` is set, `robots.ts` disallows everything and every
+response carries `X-Robots-Tag: noindex`. A crawled copy of a site that hands
+out login codes would be difficult to undo.
+
+**What still works:** the whole product. Browse, book, pay through the
+development gateway, check in by QR, rent tracking. **What does not:** any real
+money, any message, and photos survive only until the next redeploy.
+
+---
+
 ## Environment
 
 ### Railway — API

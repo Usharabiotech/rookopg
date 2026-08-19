@@ -1,3 +1,4 @@
+import { gateHeaders } from './api';
 import 'server-only';
 import type { ListingCard, LocalityCount, PublicListing, SearchResults } from './types';
 
@@ -12,7 +13,7 @@ const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:3001/api/v1';
  */
 async function publicGet<T>(path: string, revalidate: number): Promise<T | null> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...gateHeaders() },
     next: { revalidate },
   });
   if (!response.ok) return null;

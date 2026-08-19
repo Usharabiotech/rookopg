@@ -4,6 +4,17 @@ import type { ApiErrorBody, AuthSession } from './types';
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:3001/api/v1';
 
+/**
+ * Shared token for a gated test deployment.
+ *
+ * Server-side only — it is read from the environment in code that never
+ * reaches the browser, so the token is not shipped to visitors. Empty in
+ * local development and in production, where the gate is off.
+ */
+const DEPLOY_GATE = process.env.DEPLOY_GATE_TOKEN ?? '';
+export const gateHeaders = (): Record<string, string> =>
+  DEPLOY_GATE ? { 'x-deploy-gate': DEPLOY_GATE } : {};
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -44,7 +55,7 @@ async function parseError(response: Response): Promise<ApiError> {
 }
 
 async function rawRequest<T>(path: string, options: RequestOptions, token?: string): Promise<T> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', ...gateHeaders() };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -112,7 +123,7 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   const send = async (token: string): Promise<Response> =>
     fetch(`${API_BASE_URL}${path}`, {
       method: 'POST',
-      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, ...gateHeaders() },
       body: form,
       cache: 'no-store',
     });
@@ -147,7 +158,7 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
 export async function apiFetchRaw(path: string): Promise<Response> {
   const get = async (token: string): Promise<Response> =>
     fetch(`${API_BASE_URL}${path}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, ...gateHeaders() },
       cache: 'no-store',
       redirect: 'follow',
     });

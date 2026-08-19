@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createHmac } from 'node:crypto';
-import { api, isApiError } from '@/lib/api';
+import { api, isApiError, gateHeaders } from '@/lib/api';
 import type { Checkout } from '@/lib/types';
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:3001/api/v1';
@@ -77,7 +77,11 @@ export async function simulateDevPaymentAction(formData: FormData): Promise<void
 
   await fetch(`${API_BASE_URL}/payments/webhook`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-webhook-signature': signature },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-webhook-signature': signature,
+      ...gateHeaders(),
+    },
     body: payload,
     cache: 'no-store',
   });
