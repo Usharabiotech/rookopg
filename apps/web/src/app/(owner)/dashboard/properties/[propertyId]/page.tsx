@@ -5,7 +5,7 @@ import { api, isApiError } from '@/lib/api';
 import { Badge, Card, EmptyState, LinkButton, PageHeader, Stat } from '@/components/ui';
 import { amenityLabel } from '@/lib/amenities';
 import { genderLabel, rupeesShort } from '@/lib/format';
-import type { Media, PropertyDetail, Room, Tenancy } from '@/lib/types';
+import type { Booking, Media, PropertyDetail, Room, Tenancy } from '@/lib/types';
 import { BedGrid } from './bed-grid';
 import { PhotoGrid } from './photos/photo-grid';
 import { PhotoUploader } from './photos/photo-uploader';
@@ -30,13 +30,15 @@ export default async function PropertyPage({ params }: { params: Params }) {
   let rooms: Room[];
   let photos: Media[];
   let tenancies: Tenancy[];
+  let bookings: Booking[];
 
   try {
-    [property, rooms, photos, tenancies] = await Promise.all([
+    [property, rooms, photos, tenancies, bookings] = await Promise.all([
       api<PropertyDetail>(`/properties/${propertyId}`),
       api<Room[]>(`/properties/${propertyId}/rooms`),
       api<Media[]>(`/properties/${propertyId}/media`),
       api<Tenancy[]>(`/properties/${propertyId}/tenancies`),
+      api<Booking[]>(`/properties/${propertyId}/bookings`),
     ]);
   } catch (error) {
     // The API answers 404 for another organisation's property too, so this
@@ -44,6 +46,10 @@ export default async function PropertyPage({ params }: { params: Params }) {
     if (isApiError(error) && error.status === 404) notFound();
     throw error;
   }
+
+  // Somebody has paid and is waiting on an answer. If the owner ignores it the
+  // booking expires on its own, so this is the one number worth interrupting for.
+  const waiting = bookings.filter((booking) => booking.status === 'PENDING_APPROVAL').length;
 
   const cheapest = rooms.length ? Math.min(...rooms.map((room) => room.baseRentPaise)) : 0;
   const taken = property.totalBeds - property.availableBeds;
@@ -62,7 +68,19 @@ export default async function PropertyPage({ params }: { params: Params }) {
         title={property.name}
         subtitle={`${genderLabel(property.genderPolicy)} · ${property.addressLine1} · ${property.pincode}`}
         action={
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {waiting > 0 ? (
+              <LinkButton href={`/dashboard/properties/${property.id}/bookings`}>
+                {waiting} waiting on you
+              </LinkButton>
+            ) : (
+              <LinkButton
+                href={`/dashboard/properties/${property.id}/bookings`}
+                variant="secondary"
+              >
+                Bookings
+              </LinkButton>
+            )}
             {tenancies.length > 0 ? (
               <LinkButton href={`/dashboard/properties/${property.id}/rent`}>Rent</LinkButton>
             ) : null}
