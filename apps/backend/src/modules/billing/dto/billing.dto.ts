@@ -85,6 +85,11 @@ export class TenantDuesDto {
   @ApiProperty() phone!: string;
   @ApiProperty({ example: '101' }) roomCode!: string;
   @ApiProperty({ example: 'B' }) bedCode!: string;
+  @ApiProperty({
+    example: 'ACTIVE',
+    description: 'A tenancy that has ended still appears here while money is owed',
+  })
+  status!: string;
   @ApiProperty() monthlyRentPaise!: number;
   @ApiProperty({ description: 'Total still owed across all invoices' })
   outstandingPaise!: number;

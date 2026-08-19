@@ -103,6 +103,13 @@ export class BillingService {
   }
 
   /** Who owes what, worst first — the screen an owner opens to chase rent. */
+  /**
+   * The rent page.
+   *
+   * Includes tenants who have left but still owe, because the summary counts
+   * every invoice the property ever raised. Showing one without the other told
+   * owners money was outstanding and gave them nobody to chase.
+   */
   async dues(actor: AuthenticatedActor, propertyId: string): Promise<DuesResponseDto> {
     await this.assertPropertyAccess(actor, propertyId);
 
@@ -110,7 +117,7 @@ export class BillingService {
     // because the nightly job has not run since a tenant moved in.
     await this.generateForProperty(propertyId);
 
-    const tenancies = await this.repository.listBillableTenancies(propertyId);
+    const tenancies = await this.repository.listTenanciesForDues(propertyId);
     const tenancyIds = tenancies.map((tenancy) => tenancy.id);
 
     const [invoices, credits, totals] = await Promise.all([
@@ -230,6 +237,7 @@ export class BillingService {
       phone: tenancy.phone,
       roomCode: tenancy.roomCode,
       bedCode: tenancy.bedCode,
+        status: tenancy.status,
       monthlyRentPaise: tenancy.agreedRentPaise,
       outstandingPaise,
       creditPaise,

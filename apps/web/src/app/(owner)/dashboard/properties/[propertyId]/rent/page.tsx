@@ -47,6 +47,13 @@ function TenantRow({ propertyId, tenant }: { propertyId: string; tenant: TenantD
               {tenant.roomCode}·{tenant.bedCode}
             </span>
           </p>
+          {/* They have moved out but the money has not. Without saying so the
+              owner reads this as somebody still in the building. */}
+          {tenant.status !== 'ACTIVE' && tenant.status !== 'NOTICE_GIVEN' ? (
+            <p className="mt-1">
+              <Badge tone="warning">moved out · still owes</Badge>
+            </p>
+          ) : null}
           <p className="figure mt-0.5 text-xs text-[var(--text-muted)]">
             {tenant.phone} · {rupeesShort(tenant.monthlyRentPaise)}/month
           </p>

@@ -191,6 +191,8 @@ export interface Invoice {
 
 export interface TenantDues {
   tenancyId: string;
+  /** A tenancy that has ended still appears while money is owed. */
+  status: string;
   tenantName: string;
   phone: string;
   roomCode: string;

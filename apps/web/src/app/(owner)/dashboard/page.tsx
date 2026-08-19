@@ -1,67 +1,13 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { api } from '@/lib/api';
-import { Badge, Card, EmptyState, LinkButton, PageHeader, Stat } from '@/components/ui';
-import { genderLabel } from '@/lib/format';
+import { Card, EmptyState, LinkButton, PageHeader } from '@/components/ui';
+import { PropertySearch } from './property-search';
 import type { AuthUser, PropertySummary } from '@/lib/types';
 import { CreateOrganisationForm } from './create-organisation-form';
 
 export const metadata: Metadata = { title: 'Properties' };
 
-function OccupancyBar({ available, total }: { available: number; total: number }) {
-  const taken = Math.max(0, total - available);
-  const percent = total === 0 ? 0 : Math.round((taken / total) * 100);
 
-  return (
-    <div
-      className="mt-4 flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-[var(--bg-deep)]"
-      role="img"
-      aria-label={`${percent}% occupied`}
-    >
-      <div className="h-full rounded-full bg-brass-500" style={{ width: `${percent}%` }} />
-    </div>
-  );
-}
-
-function PropertyCard({ property }: { property: PropertySummary }) {
-  const notSetUp = property.totalBeds === 0;
-
-  return (
-    <li>
-      <Link
-        href={`/dashboard/properties/${property.id}`}
-        className="lift block h-full rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] hover:border-brass-300"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="display truncate text-lg leading-snug">{property.name}</h2>
-            <p className="mt-0.5 truncate text-sm text-[var(--text-muted)]">
-              {property.localityName} · {genderLabel(property.genderPolicy)}
-            </p>
-          </div>
-          <Badge tone={property.listingStatus === 'PUBLISHED' ? 'free' : 'neutral'}>
-            {property.listingStatus === 'PUBLISHED' ? 'Live' : 'Draft'}
-          </Badge>
-        </div>
-
-        {notSetUp ? (
-          <p className="mt-5 text-sm font-medium text-[var(--accent-text)]">
-            No rooms yet — open it to set up the building
-          </p>
-        ) : (
-          <>
-            <div className="mt-5 flex gap-7">
-              <Stat value={property.availableBeds} label="free" tone="free" />
-              <Stat value={property.totalBeds - property.availableBeds} label="taken" tone="taken" />
-              <Stat value={property.roomCount} label="rooms" />
-            </div>
-            <OccupancyBar available={property.availableBeds} total={property.totalBeds} />
-          </>
-        )}
-      </Link>
-    </li>
-  );
-}
 
 /** First run: name the business. Two columns on desktop so the page is not
  *  one small card adrift in a wide window. */
@@ -112,7 +58,21 @@ export default async function PropertiesPage() {
 
   if (!membership) return <FirstRun />;
 
-  const properties = await api<PropertySummary[]>(`/orgs/${membership.orgId}/properties`);
+  const unsorted = await api<PropertySummary[]>(`/orgs/${membership.orgId}/properties`);
+
+  /*
+   * Order by what needs the owner, not by whatever the database returned.
+   *
+   * A building with no rooms cannot take a single booking, so it goes first
+   * however long it has sat there. Live listings next, because those are the
+   * ones earning. Drafts last. Alphabetical within each, so a building keeps
+   * roughly the same place in the list from one visit to the next.
+   */
+  const properties = [...unsorted].sort((a, b) => {
+    const rank = (p: PropertySummary) =>
+      p.roomCount === 0 ? 0 : p.listingStatus === 'PUBLISHED' ? 1 : 2;
+    return rank(a) - rank(b) || a.name.localeCompare(b.name);
+  });
   const totalBeds = properties.reduce((sum, p) => sum + p.totalBeds, 0);
   const freeBeds = properties.reduce((sum, p) => sum + p.availableBeds, 0);
 
@@ -148,11 +108,7 @@ export default async function PropertiesPage() {
           }
         />
       ) : (
-        <ul className="stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {properties.map((property) => (
-            <PropertyCard key={property.id} property={property} />
-          ))}
-        </ul>
+        <PropertySearch properties={properties} />
       )}
     </>
   );

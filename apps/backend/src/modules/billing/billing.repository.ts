@@ -94,6 +94,62 @@ export class BillingRepository {
     }));
   }
 
+  /**
+   * Who to show on the rent page, which is not the same as who to bill.
+   *
+   * The nightly job must never invoice someone who has left. The rent page
+   * must still show what they owe — otherwise the summary reports outstanding
+   * money against an empty list, and the owner is told they are owed ₹46,000
+   * with no way to find out by whom.
+   */
+  async listTenanciesForDues(propertyId: string): Promise<BillableTenancy[]> {
+    const current = await this.listBillableTenancies(propertyId);
+
+    const departedWhoOwe = await this.prisma.tenancy.findMany({
+      where: {
+        propertyId,
+        status: { notIn: [TenancyStatus.ACTIVE, TenancyStatus.NOTICE_GIVEN] },
+        invoices: {
+          some: {
+            status: { notIn: [InvoiceStatus.VOID, InvoiceStatus.PAID] },
+          },
+        },
+      },
+      select: {
+        id: true,
+        orgId: true,
+        propertyId: true,
+        tenantUserId: true,
+        startDate: true,
+        endDate: true,
+        agreedRentPaise: true,
+        cycleAnchorDay: true,
+        status: true,
+        tenant: { select: { fullName: true, phone: true } },
+        bed: { select: { code: true, room: { select: { code: true } } } },
+      },
+    });
+
+    return [
+      ...current,
+      ...departedWhoOwe.map((row) => ({
+        id: row.id,
+        orgId: row.orgId,
+        propertyId: row.propertyId,
+        tenantUserId: row.tenantUserId,
+        startDate: row.startDate,
+        endDate: row.endDate,
+        agreedRentPaise: row.agreedRentPaise,
+        cycleAnchorDay: row.cycleAnchorDay,
+        status: row.status,
+        tenantName: row.tenant.fullName,
+        phone: row.tenant.phone,
+        roomCode: row.bed.room.code,
+        bedCode: row.bed.code,
+      })),
+    ];
+  }
+
   /** Every property with tenants, for the nightly run. */
   async listPropertiesWithTenants(): Promise<string[]> {
     const rows = await this.prisma.tenancy.findMany({
