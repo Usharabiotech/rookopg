@@ -93,6 +93,9 @@ export default async function PropertyPage({ params }: { params: Params }) {
             >
               {rooms.length === 0 ? 'Set up rooms' : 'Add rooms'}
             </LinkButton>
+            <LinkButton href={`/dashboard/properties/${property.id}/edit`} variant="secondary">
+              Edit
+            </LinkButton>
           </div>
         }
       />

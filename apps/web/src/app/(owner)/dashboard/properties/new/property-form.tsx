@@ -3,14 +3,14 @@
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Alert, Button, Card, Checkbox, Field, Input, Select } from '@/components/ui';
-import type { Amenity, Locality } from '@/lib/types';
+import type { Amenity, Locality, PropertyDetail } from '@/lib/types';
 import { createPropertyAction, type PropertyFormState } from './actions';
 
-function SubmitButton() {
+function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" fullWidth disabled={pending}>
-      {pending ? 'Saving…' : 'Save and set up rooms'}
+      {pending ? 'Saving…' : label}
     </Button>
   );
 }
@@ -19,17 +19,32 @@ function SectionTitle({ children }: { children: string }) {
   return <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">{children}</h2>;
 }
 
+/**
+ * Used to create a building and to edit one.
+ *
+ * The same twenty-odd fields either way, so this takes the action to submit to
+ * and the values to start from. A server action passes across the client
+ * boundary, which an ordinary function does not — that is what makes one form
+ * serve both instead of two that drift apart.
+ */
 export function PropertyForm({
   orgId,
   localities,
   amenities,
+  action: submitAction = createPropertyAction,
+  property,
+  submitLabel = 'Save and set up rooms',
 }: {
   orgId: string;
   localities: Locality[];
   amenities: Amenity[];
+  action?: (state: PropertyFormState, form: FormData) => Promise<PropertyFormState>;
+  property?: PropertyDetail;
+  submitLabel?: string;
 }) {
-  const [state, action] = useActionState<PropertyFormState, FormData>(createPropertyAction, {});
+  const [state, action] = useActionState<PropertyFormState, FormData>(submitAction, {});
   const err = (field: string) => state.fieldErrors?.[field];
+  const meals = property?.mealPlan;
 
   const grouped = amenities.reduce<Record<string, Amenity[]>>((acc, amenity) => {
     (acc[amenity.category] ??= []).push(amenity);
@@ -39,13 +54,23 @@ export function PropertyForm({
   return (
     <form action={action} className="space-y-5 pb-24">
       <input type="hidden" name="orgId" value={orgId} />
+      {/* Present only when editing, which is how the action tells the two apart. */}
+      {property ? <input type="hidden" name="propertyId" value={property.id} /> : null}
       {state.error ? <Alert>{state.error}</Alert> : null}
 
       <Card>
         <SectionTitle>The basics</SectionTitle>
         <div className="space-y-4">
           <Field label="PG name" htmlFor="name" required {...(err('name') ? { error: err('name')! } : {})}>
-            <Input id="name" name="name" required autoFocus maxLength={160} placeholder="Sunrise Mens PG" />
+            <Input
+              id="name"
+              name="name"
+              required
+              autoFocus
+              maxLength={160}
+              placeholder="Sunrise Mens PG"
+              defaultValue={property?.name ?? ''}
+            />
           </Field>
 
           <Field
@@ -54,7 +79,7 @@ export function PropertyForm({
             required
             {...(err('genderPolicy') ? { error: err('genderPolicy')! } : {})}
           >
-            <Select id="genderPolicy" name="genderPolicy" required defaultValue="">
+            <Select id="genderPolicy" name="genderPolicy" required defaultValue={property?.genderPolicy ?? ''}>
               <option value="" disabled>
                 Choose…
               </option>
@@ -65,7 +90,7 @@ export function PropertyForm({
           </Field>
 
           <Field label="Type" htmlFor="propertyType">
-            <Select id="propertyType" name="propertyType" defaultValue="PG">
+            <Select id="propertyType" name="propertyType" defaultValue={property?.propertyType ?? 'PG'}>
               <option value="PG">PG</option>
               <option value="HOSTEL">Hostel</option>
               <option value="CO_LIVING">Co-living</option>
@@ -89,11 +114,18 @@ export function PropertyForm({
               required
               maxLength={200}
               placeholder="Plot 42, Ayyappa Society"
+              defaultValue={property?.addressLine1 ?? ''}
             />
           </Field>
 
           <Field label="Landmark" htmlFor="landmark" hint="Helps tenants find it">
-            <Input id="landmark" name="landmark" maxLength={160} placeholder="Behind Cyber Towers" />
+            <Input
+              id="landmark"
+              name="landmark"
+              maxLength={160}
+              placeholder="Behind Cyber Towers"
+              defaultValue={property?.landmark ?? ''}
+            />
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -103,7 +135,7 @@ export function PropertyForm({
               required
               {...(err('localityId') ? { error: err('localityId')! } : {})}
             >
-              <Select id="localityId" name="localityId" required defaultValue="">
+              <Select id="localityId" name="localityId" required defaultValue={property?.localityId ?? ''}>
                 <option value="" disabled>
                   Choose an area…
                 </option>
@@ -129,6 +161,7 @@ export function PropertyForm({
                 required
                 placeholder="500081"
                 className="tnum"
+                defaultValue={property?.pincode ?? ''}
               />
             </Field>
           </div>
@@ -147,6 +180,7 @@ export function PropertyForm({
               maxLength={10}
               placeholder="98765 43210"
               className="tnum"
+              defaultValue={property?.contactPhone ?? ''}
             />
           </Field>
         </div>
@@ -156,7 +190,7 @@ export function PropertyForm({
         <SectionTitle>Food</SectionTitle>
         <div className="space-y-4">
           <Field label="Kitchen" htmlFor="foodType">
-            <Select id="foodType" name="foodType" defaultValue="VEG">
+            <Select id="foodType" name="foodType" defaultValue={meals?.foodType ?? 'VEG'}>
               <option value="VEG">Vegetarian</option>
               <option value="NON_VEG">Non-vegetarian</option>
               <option value="BOTH">Both</option>
@@ -167,9 +201,9 @@ export function PropertyForm({
           <fieldset>
             <legend className="mb-2 text-sm font-medium">Meals included</legend>
             <div className="grid grid-cols-3 gap-2">
-              <Checkbox id="breakfast" name="breakfast" label="Breakfast" />
-              <Checkbox id="lunch" name="lunch" label="Lunch" />
-              <Checkbox id="dinner" name="dinner" label="Dinner" />
+              <Checkbox id="breakfast" name="breakfast" label="Breakfast" defaultChecked={meals?.breakfast} />
+              <Checkbox id="lunch" name="lunch" label="Lunch" defaultChecked={meals?.lunch} />
+              <Checkbox id="dinner" name="dinner" label="Dinner" defaultChecked={meals?.dinner} />
             </div>
           </fieldset>
 
@@ -205,6 +239,7 @@ export function PropertyForm({
                     name="amenityCodes"
                     value={amenity.code}
                     label={amenity.name}
+                    defaultChecked={property?.amenityCodes.includes(amenity.code)}
                   />
                 ))}
               </div>
@@ -221,14 +256,20 @@ export function PropertyForm({
           hint="24-hour time. Leave blank if there is no curfew."
           {...(err('gateClosingTime') ? { error: err('gateClosingTime')! } : {})}
         >
-          <Input id="gateClosingTime" name="gateClosingTime" placeholder="22:30" className="tnum" />
+          <Input
+            id="gateClosingTime"
+            name="gateClosingTime"
+            placeholder="22:30"
+            className="tnum"
+            defaultValue={property?.rules?.gateClosingTime ?? ''}
+          />
         </Field>
       </Card>
 
       {/* Sticky so the action is always in thumb reach on a long mobile form. */}
       <div className="fixed inset-x-0 bottom-0 border-t border-[var(--border)] bg-[var(--bg)]/95 p-3 backdrop-blur">
         <div className="mx-auto max-w-5xl">
-          <SubmitButton />
+          <SubmitButton label={submitLabel} />
         </div>
       </div>
     </form>

@@ -58,3 +58,13 @@ export function occupancyLabel(available: number, total: number): string {
   if (available === 0) return 'Full';
   return `${available} of ${total} free`;
 }
+
+/**
+ * Back to whole rupees, for seeding an edit field.
+ *
+ * Plain digits, no separators or symbol: this goes into an input the owner is
+ * about to retype, and "₹7,000" would have to be stripped again on the way out.
+ */
+export function paiseToRupees(paise: number): string {
+  return String(Math.round(paise / 100));
+}

@@ -117,7 +117,13 @@ function RoomRow({
     <li className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-[var(--border)] py-3.5">
       <div className="w-32 shrink-0">
         <p className="figure text-sm font-semibold">
-          {room.code}
+          <Link
+            href={`/dashboard/properties/${propertyId}/rooms/${room.id}`}
+            className="underline decoration-[var(--border-strong)] underline-offset-2 hover:decoration-[var(--text)]"
+            title={`Edit room ${room.code} — rent, AC, deposit`}
+          >
+            {room.code}
+          </Link>
           {room.hasAc ? (
             <span className="ml-1.5 font-sans text-[10px] font-medium uppercase tracking-wide text-[var(--accent-text)]">
               AC
