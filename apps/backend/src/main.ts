@@ -19,6 +19,20 @@ async function bootstrap(): Promise<void> {
   const corsOrigins = config.get('CORS_ORIGINS', { infer: true });
 
   app.setGlobalPrefix('api/v1');
+
+  /*
+   * Behind a platform proxy (Railway, a load balancer), every request arrives
+   * from the proxy's address. Without this the rate limiter sees one client
+   * making all the traffic, so the 120-a-minute cap applies to everybody at
+   * once and the second person to use the site is throttled by the first.
+   *
+   * One hop only. Trusting the whole chain would let a caller forge
+   * X-Forwarded-For and hand themselves a fresh quota per request.
+   */
+  if (nodeEnv === 'production') {
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  }
+
   app.use(helmet());
   app.enableCors({
     origin: corsOrigins.length > 0 ? corsOrigins : false,
@@ -48,8 +62,10 @@ async function bootstrap(): Promise<void> {
     logger.log(`API docs at http://localhost:${port}/api/docs`);
   }
 
-  await app.listen(port);
-  logger.log(`Listening on http://localhost:${port}/api/v1 (${nodeEnv})`);
+  // 0.0.0.0, not localhost: a container that binds the loopback is unreachable
+  // from outside itself, and the platform health check never passes.
+  await app.listen(port, '0.0.0.0');
+  logger.log(`Listening on port ${port}, prefix /api/v1 (${nodeEnv})`);
 }
 
 void bootstrap();

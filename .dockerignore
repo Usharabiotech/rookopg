@@ -1,0 +1,26 @@
+# Everything the image does not need, and a few things it must never contain.
+node_modules
+**/node_modules
+.next
+**/.next
+.git
+.turbo
+**/.turbo
+coverage
+**/coverage
+apps/backend/dist
+apps/web/dist
+
+# Real secrets. The image is built from this tree; a stray .env would be baked in.
+.env
+**/.env
+.env.*
+!**/.env.example
+
+# Locally uploaded photos. Named exactly, not **/storage — that pattern also
+# matched src/modules/storage and the build failed on the missing module.
+apps/backend/storage
+
+*.log
+tests/e2e
+docs
