@@ -1,15 +1,8 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { api, isApiError } from '@/lib/api';
-import { ThemeToggle, type Theme } from '@/components/theme-toggle';
 import type { AuthUser } from '@/lib/types';
 import { signOutAction } from './actions';
 import { NavLinks } from './nav-links';
-
-async function readTheme(): Promise<Theme> {
-  const value = (await cookies()).get('pg_theme')?.value;
-  return value === 'dark' || value === 'light' ? value : 'system';
-}
 
 async function loadUser(): Promise<AuthUser> {
   try {
@@ -20,26 +13,22 @@ async function loadUser(): Promise<AuthUser> {
   }
 }
 
-function Wordmark({ onRail }: { onRail?: boolean }) {
+function Wordmark() {
   return (
     <span className="flex items-center gap-2.5">
       <span
         aria-hidden="true"
-        className="figure inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-brass-500 text-[13px] font-semibold text-ink-950"
+        className="figure inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--action)] text-[13px] font-semibold text-[var(--on-action)]"
       >
         PG
       </span>
-      <span
-        className={`display text-[15px] leading-none ${onRail ? 'text-white' : 'text-[var(--text)]'}`}
-      >
-        PG Platform
-      </span>
+      <span className="display text-[15px] leading-none">PG Platform</span>
     </span>
   );
 }
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
-  const [user, theme] = await Promise.all([loadUser(), readTheme()]);
+  const user = await loadUser();
   const org = user.memberships[0];
   const isOwner = org?.role === 'OWNER';
 
@@ -49,18 +38,18 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         Desktop rail. A dashboard that lives on one screen all day wants its
         navigation parked, not floating above the content.
       */}
-      <aside className="hidden bg-[var(--rail)] lg:flex lg:flex-col lg:justify-between lg:p-5">
+      <aside className="hidden border-r border-[var(--border)] bg-[var(--rail)] lg:flex lg:flex-col lg:justify-between lg:p-5">
         <div>
           <a href="/dashboard" className="block">
-            <Wordmark onRail />
+            <Wordmark />
           </a>
 
           {org ? (
             <>
               <div className="mt-8">
-                <p className="eyebrow text-ink-400">Business</p>
-                <p className="mt-1.5 truncate font-medium text-white">{org.orgName}</p>
-                <p className="mt-0.5 text-xs capitalize text-ink-400">{org.role.toLowerCase()}</p>
+                <p className="eyebrow">Business</p>
+                <p className="mt-1.5 truncate font-medium">{org.orgName}</p>
+                <p className="mt-0.5 text-xs capitalize text-[var(--text-muted)]">{org.role.toLowerCase()}</p>
               </div>
               <nav aria-label="Sections" className="mt-8">
                 <NavLinks variant="rail" showStaff={Boolean(org)} />
@@ -70,11 +59,10 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         </div>
 
         <div className="space-y-3">
-          <ThemeToggle initial={theme} variant="rail" />
           <form action={signOutAction}>
             <button
               type="submit"
-              className="pressable min-h-11 w-full rounded-lg px-3 text-left text-sm text-ink-400 hover:bg-white/5 hover:text-white"
+              className="pressable min-h-11 w-full rounded-lg px-3 text-left text-sm text-[var(--rail-text)] hover:bg-[var(--rail-hover)] hover:text-[var(--text)]"
             >
               Sign out
             </button>
@@ -91,7 +79,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
                 <span className="flex items-center gap-2.5">
                   <span
                     aria-hidden="true"
-                    className="figure inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-brass-500 text-[13px] font-semibold text-ink-950"
+                    className="figure inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--action)] text-[13px] font-semibold text-[var(--on-action)]"
                   >
                     PG
                   </span>
@@ -110,7 +98,6 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
             </a>
 
             <div className="flex shrink-0 items-center gap-2">
-              <ThemeToggle initial={theme} variant="bar" />
               <form action={signOutAction}>
                 <button
                   type="submit"

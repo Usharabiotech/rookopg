@@ -29,15 +29,15 @@ export default async function LoginPage({
         word is read, and fills the desktop width with something true rather
         than a stock photograph.
       */}
-      <aside className="relative hidden overflow-hidden bg-ink-950 p-12 lg:flex lg:flex-col lg:justify-between">
+      <aside className="relative hidden overflow-hidden border-r border-[var(--border)] bg-[var(--bg-deep)] p-12 lg:flex lg:flex-col lg:justify-between">
         <span className="flex items-center gap-2.5">
           <span
             aria-hidden="true"
-            className="figure inline-flex size-8 items-center justify-center rounded-md bg-brass-500 text-[13px] font-semibold text-ink-950"
+            className="figure inline-flex size-8 items-center justify-center rounded-md bg-[var(--action)] text-[13px] font-semibold text-[var(--on-action)]"
           >
             PG
           </span>
-          <span className="display text-[15px] text-white">PG Platform</span>
+          <span className="display text-[15px]">PG Platform</span>
         </span>
 
         <div>
@@ -54,14 +54,14 @@ export default async function LoginPage({
                   className={
                     'figure relative inline-flex h-12 w-11 items-end justify-center rounded-md border pb-2 text-xs font-semibold ' +
                     (taken
-                      ? 'border-brass-600 bg-brass-500 text-ink-950'
-                      : 'border-ink-700 bg-ink-900 text-ink-400')
+                      ? 'border-brass-500 bg-brass-100 text-brass-700'
+                      : 'border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text-muted)]')
                   }
                 >
                   <span
                     className={
                       'absolute left-1/2 top-2 size-1.5 -translate-x-1/2 rounded-full ' +
-                      (taken ? 'bg-ink-950/40' : 'bg-ink-700')
+                      (taken ? 'bg-brass-500/50' : 'bg-[var(--border-strong)]')
                     }
                   />
                   {code}
@@ -70,23 +70,23 @@ export default async function LoginPage({
             })}
           </div>
 
-          <h2 className="display max-w-sm text-3xl leading-tight text-white">
+          <h2 className="display max-w-sm text-3xl leading-tight">
             Every bed in your building, on one screen.
           </h2>
-          <p className="mt-3 max-w-sm text-sm text-ink-400">
+          <p className="mt-3 max-w-sm text-sm text-[var(--text-muted)]">
             Rooms, beds, who is staying and what they owe — instead of a register book and a
             WhatsApp group.
           </p>
         </div>
 
-        <p className="text-xs text-ink-500">Hyderabad · PGs and hostels</p>
+        <p className="text-xs text-[var(--text-muted)]">Hyderabad · PGs and hostels</p>
       </aside>
 
       <main id="main" className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10 lg:px-12">
         <div className="rise">
           <span
             aria-hidden="true"
-            className="figure mb-7 inline-flex size-11 items-center justify-center rounded-lg bg-brass-500 text-base font-semibold text-ink-950 lg:hidden"
+            className="figure mb-7 inline-flex size-11 items-center justify-center rounded-lg bg-[var(--action)] text-base font-semibold text-[var(--on-action)] lg:hidden"
           >
             PG
           </span>

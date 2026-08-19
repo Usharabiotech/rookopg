@@ -3,62 +3,62 @@
 /*
   PG Platform — visual language
 
-  The subject is a building full of numbered doors and a rack of keys behind
-  the warden's desk. Everything here comes from that: mono numerals because
-  rooms label themselves that way, brass because a taken bed is a key off the
-  hook, floors as bands because a building is stacked.
+  White ground, one accent, and colour reserved for meaning.
 
-  Base is navy-ink rather than neutral black. Blue-tinted darks hold shadow
-  and let surfaces separate; flat charcoal goes muddy the moment you stack
-  two panels.
+  The subject is a building full of numbered doors: mono numerals because rooms
+  label themselves that way, floors as bands because a building is stacked. What
+  colour there is has a job — a bed is free, a bed is taken, rent is late. Nothing
+  is tinted for decoration, so the three signals that matter are never competing
+  with a fourth that does not.
+
+  Neutrals are very slightly cool. Pure greys go flat when panels stack; a few
+  degrees of blue keeps a card readable against the page behind it.
 */
 
 @theme {
-  /* Ink — brand, text, dark surfaces */
-  --color-ink-50: #eef1f6;
-  --color-ink-200: #c3ccdb;
-  --color-ink-400: #6b7a94;
-  --color-ink-500: #4a5a75;
-  --color-ink-600: #33435c;
-  --color-ink-700: #223045;
-  --color-ink-800: #182333;
-  --color-ink-900: #101a27;
-  --color-ink-950: #0a121c;
+  /* Ink — text and neutrals */
+  --color-ink-50: #f6f7f9;
+  --color-ink-100: #eceef2;
+  --color-ink-200: #dfe2e9;
+  --color-ink-300: #c7ccd6;
+  --color-ink-400: #98a0ae;
+  --color-ink-500: #697280;
+  --color-ink-600: #4d5563;
+  --color-ink-700: #363d49;
+  --color-ink-800: #232932;
+  --color-ink-900: #16181d;
+  --color-ink-950: #0d0f12;
 
-  /* Paper — warm light ground, kept grey enough to dodge the cream cliché */
-  --color-paper-50: #f7f6f3;
-  --color-paper-100: #efedE8;
-  --color-paper-200: #e2dfd7;
-  --color-paper-300: #cdc8bc;
-
-  /* Brass — a key off the hook. Occupied, and the primary action. */
-  --color-brass-100: #f7ecd6;
-  --color-brass-300: #e0c084;
-  --color-brass-500: #b8863b;
-  --color-brass-600: #9a6d2b;
-  --color-brass-700: #7a5520;
-
-  /* Moss — free, available, positive */
-  --color-moss-100: #dcece1;
-  --color-moss-300: #6fbb90;
-  --color-moss-500: #3d8a63;
-  --color-moss-600: #2f6e4e;
-  --color-moss-700: #23543c;
-
-  /* Teal — the action. Deliberately cool: brass already means "bed taken",
-     so a warm action colour would read as the same signal. Bright enough to
-     carry a button, dark enough to take ink-950 text at 6:1. */
+  /* Teal — the action. Book, pay, check in. */
+  --color-teal-50: #eafaf7;
   --color-teal-100: #ccf3ee;
   --color-teal-300: #5fd9c9;
   --color-teal-500: #12a594;
   --color-teal-600: #0f8578;
   --color-teal-700: #0b6459;
 
-  /* Rust — errors and destructive actions */
-  --color-rust-100: #f8e3dd;
-  --color-rust-300: #e08a72;
-  --color-rust-500: #b8503a;
-  --color-rust-600: #9a3f2c;
+  /* Moss — free, available, paid */
+  --color-moss-50: #edf7f0;
+  --color-moss-100: #dcece1;
+  --color-moss-300: #6fbb90;
+  --color-moss-500: #2f8f5b;
+  --color-moss-600: #15803d;
+  --color-moss-700: #116330;
+
+  /* Amber — taken. A key off the hook. */
+  --color-brass-50: #fdf5e8;
+  --color-brass-100: #fbeacd;
+  --color-brass-300: #e8b866;
+  --color-brass-500: #d18b1a;
+  --color-brass-600: #b45309;
+  --color-brass-700: #8a3f07;
+
+  /* Rust — errors, overdue, destructive */
+  --color-rust-50: #fdf1f0;
+  --color-rust-100: #f9dedb;
+  --color-rust-300: #e8887f;
+  --color-rust-500: #d13b30;
+  --color-rust-600: #b91c1c;
 
   --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -68,91 +68,46 @@
 }
 
 /*
-  Three theme states, in this order of precedence:
-    1. data-theme="dark" / "light"  — the person chose, and their choice wins
-    2. prefers-color-scheme          — no explicit choice, follow the device
-    3. light                         — the fallback
+  One theme, deliberately.
 
-  Every token has a value on bare :root, so nothing is defined only inside a
-  media query. A token that exists in one branch and not the other is how
-  themes end up with invisible text.
+  There was a dark mode; it is gone. Every colour below is defined once, so
+  there is no second set to keep in step and no way for a token to exist in one
+  branch and not the other.
+
+  These stay as custom properties rather than literals so the palette is one
+  file, not two hundred class names.
 */
 :root {
-  --bg: var(--color-paper-50);
-  --bg-deep: var(--color-paper-100);
+  --bg: #ffffff;
+  --bg-deep: var(--color-ink-50);
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --border: var(--color-paper-200);
-  --border-strong: var(--color-paper-300);
+  --border: var(--color-ink-200);
+  --border-strong: var(--color-ink-300);
   --text: var(--color-ink-900);
   --text-muted: var(--color-ink-500);
-  --rail: var(--color-ink-900);
-  --rail-text: var(--color-ink-200);
-  --rail-active: #ffffff;
 
-  /* Meaning, not paint. The palette shades above are fixed, so using one
-     directly as text works on paper and fails on ink: moss-600 on a dark
-     surface lands near 3:1, under the 4.5:1 body-text floor. These three
-     carry the meaning and each theme picks a shade that can be read. */
+  /* The dashboard rail, now light like everything else. */
+  --rail: var(--color-ink-50);
+  --rail-text: var(--color-ink-500);
+  --rail-active: var(--color-ink-900);
+  --rail-hover: var(--color-ink-100);
+
+  /*
+    Meaning, not paint. Each is checked against white at AA for body text:
+    muted 4.9:1, free 5.0:1, taken 5.0:1, overdue 6.5:1. The action is teal-600
+    rather than the brighter teal-500 because white on 500 lands at 3.8:1 — it
+    looked right and would have failed a contrast check.
+  */
   --ok: var(--color-moss-600);
   --accent-text: var(--color-brass-600);
   --danger-text: var(--color-rust-600);
-  --action: var(--color-teal-500);
-  --action-hover: var(--color-teal-600);
-  --on-action: var(--color-ink-950);
-  --shadow-card: 0 1px 2px rgb(16 26 39 / 0.06), 0 1px 3px rgb(16 26 39 / 0.04);
+  --action: var(--color-teal-600);
+  --action-hover: var(--color-teal-700);
+  --on-action: #ffffff;
+
+  --shadow-card: 0 1px 2px rgb(22 24 29 / 0.05), 0 1px 3px rgb(22 24 29 / 0.04);
   color-scheme: light;
-}
-
-@mixin-placeholder {
-  /* Tailwind v4 has no @mixin; the dark values are written twice below on
-     purpose so each selector stands alone. */
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: var(--color-ink-950);
-    --bg-deep: #070d15;
-    --surface: var(--color-ink-900);
-    --surface-raised: var(--color-ink-800);
-    --border: #1d2b3d;
-    --border-strong: #2b3d54;
-    --text: var(--color-paper-50);
-    --text-muted: #8fa0b8;
-    --rail: #070d15;
-    --rail-text: #8fa0b8;
-    --rail-active: #ffffff;
-    --ok: var(--color-moss-300);
-    --accent-text: var(--color-brass-300);
-    --danger-text: var(--color-rust-300);
-    --action: var(--color-teal-500);
-    --action-hover: var(--color-teal-300);
-    --on-action: var(--color-ink-950);
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --bg: var(--color-ink-950);
-  --bg-deep: #070d15;
-  --surface: var(--color-ink-900);
-  --surface-raised: var(--color-ink-800);
-  --border: #1d2b3d;
-  --border-strong: #2b3d54;
-  --text: var(--color-paper-50);
-  --text-muted: #8fa0b8;
-  --rail: #070d15;
-  --rail-text: #8fa0b8;
-  --rail-active: #ffffff;
-  --ok: var(--color-moss-300);
-  --accent-text: var(--color-brass-300);
-  --danger-text: var(--color-rust-300);
-  --action: var(--color-teal-500);
-  --action-hover: var(--color-teal-300);
-  --on-action: var(--color-ink-950);
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
-  color-scheme: dark;
 }
 
 html {

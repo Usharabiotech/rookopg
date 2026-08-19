@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { cookies } from 'next/headers';
 import { Bricolage_Grotesque, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import './globals.css';
 
@@ -43,23 +42,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f7f6f3' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a121c' },
-  ],
+  // One theme, so one browser-chrome colour.
+  themeColor: '#ffffff',
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Read the saved choice on the server and stamp it on <html>, so the first
-  // paint is already the right theme. Doing this in a client effect is what
-  // makes apps flash white on load.
-  const theme = (await cookies()).get('pg_theme')?.value;
-  const explicit = theme === 'dark' || theme === 'light' ? theme : undefined;
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en-IN"
-      {...(explicit ? { 'data-theme': explicit } : {})}
       className={`${display.variable} ${sans.variable} ${mono.variable}`}
       style={
         {

@@ -36,7 +36,7 @@ const TAG_BASE =
   'figure relative inline-flex h-10 w-9 items-end justify-center rounded-md border pb-1.5 text-xs font-semibold';
 
 const TAG_STYLES: Record<TagState, string> = {
-  free: 'border-moss-500/40 bg-moss-100 text-moss-700 hover:border-moss-600 hover:bg-moss-500 hover:text-white',
+  free: 'border-moss-500/40 bg-moss-100 text-moss-700 hover:border-moss-700 hover:bg-moss-600 hover:text-white',
   taken: 'border-brass-600 bg-brass-500 text-ink-950',
   reserved: 'border-brass-500/50 bg-brass-100 text-brass-700 border-dashed',
   blocked:

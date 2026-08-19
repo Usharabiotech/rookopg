@@ -35,8 +35,8 @@ export function NavLinks({
                 className={
                   'pressable flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-medium ' +
                   (active
-                    ? 'bg-white/10 text-white'
-                    : 'text-[var(--rail-text)] hover:bg-white/5 hover:text-white')
+                    ? 'bg-[var(--rail-hover)] font-medium text-[var(--text)]'
+                    : 'text-[var(--rail-text)] hover:bg-[var(--rail-hover)] hover:text-[var(--text)]')
                 }
               >
                 {/* A thin brass marker rather than a filled pill — quieter, and

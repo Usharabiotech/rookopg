@@ -1,19 +1,13 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { ThemeToggle, type Theme } from '@/components/theme-toggle';
 import { LEGAL_PAGES } from '@/lib/legal';
-
-async function readTheme(): Promise<Theme> {
-  const value = (await cookies()).get('pg_theme')?.value;
-  return value === 'dark' || value === 'light' ? value : 'system';
-}
 
 async function isSignedIn(): Promise<boolean> {
   return (await cookies()).get('pg_rt') !== undefined;
 }
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const [theme, signedIn] = await Promise.all([readTheme(), isSignedIn()]);
+  const signedIn = await isSignedIn();
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -22,7 +16,7 @@ export default async function PublicLayout({ children }: { children: React.React
           <Link href="/" className="flex items-center gap-2.5">
             <span
               aria-hidden="true"
-              className="figure inline-flex size-8 items-center justify-center rounded-md bg-brass-500 text-[13px] font-semibold text-ink-950"
+              className="figure inline-flex size-8 items-center justify-center rounded-md bg-[var(--action)] text-[13px] font-semibold text-[var(--on-action)]"
             >
               PG
             </span>
@@ -30,7 +24,6 @@ export default async function PublicLayout({ children }: { children: React.React
           </Link>
 
           <div className="flex items-center gap-2">
-            <ThemeToggle initial={theme} variant="bar" />
             {/*
               Owners sign in; tenants browse. Sending an owner to their
               dashboard rather than a login form saves the one tap they make
