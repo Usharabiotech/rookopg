@@ -37,7 +37,12 @@ export function middleware(request: NextRequest) {
   return new NextResponse('Authentication required', {
     status: 401,
     headers: {
-      'WWW-Authenticate': 'Basic realm="PG Platform — test deployment", charset="UTF-8"',
+      // ASCII only. An em dash here made the whole header vanish: header
+      // values must be ISO-8859-1, so a non-ASCII byte gets the header
+      // dropped in transit rather than rejected loudly — and a browser with
+      // no WWW-Authenticate never shows a password prompt at all. It renders
+      // the 401 body instead, which looks exactly like a broken site.
+      'WWW-Authenticate': 'Basic realm="PG Platform test deployment"',
       'X-Robots-Tag': 'noindex, nofollow',
     },
   });
