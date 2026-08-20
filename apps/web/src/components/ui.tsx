@@ -166,7 +166,7 @@ export function Field({
 const CONTROL_CLASS =
   'w-full min-h-11 rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 text-base ' +
   'text-[var(--text)] placeholder:text-[var(--text-muted)] transition-colors ' +
-  'hover:border-teal-300 focus:border-[var(--action)]';
+  'hover:border-[var(--border-strong)] focus:border-[var(--action)]';
 
 export function Input({ className, ...props }: ComponentPropsWithoutRef<'input'>) {
   return <input {...props} className={cx(CONTROL_CLASS, className)} />;
@@ -188,7 +188,7 @@ export function Checkbox({
   return (
     <label
       htmlFor={id}
-      className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-[var(--border-strong)] px-3 text-sm transition-colors hover:border-teal-300"
+      className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-[var(--border-strong)] px-3 text-sm transition-colors hover:border-[var(--border-strong)]"
     >
       <input id={id} type="checkbox" {...props} className="size-4 rounded accent-[var(--action)]" />
       <span>{label}</span>

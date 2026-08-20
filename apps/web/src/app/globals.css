@@ -29,14 +29,6 @@
   --color-ink-900: #16181d;
   --color-ink-950: #0d0f12;
 
-  /* Teal — the action. Book, pay, check in. */
-  --color-teal-50: #eafaf7;
-  --color-teal-100: #ccf3ee;
-  --color-teal-300: #5fd9c9;
-  --color-teal-500: #12a594;
-  --color-teal-600: #0f8578;
-  --color-teal-700: #0b6459;
-
   /* Moss — free, available, paid */
   --color-moss-50: #edf7f0;
   --color-moss-100: #dcece1;
@@ -94,16 +86,22 @@
   --rail-hover: var(--color-ink-100);
 
   /*
-    Meaning, not paint. Each is checked against white at AA for body text:
-    muted 4.9:1, free 5.0:1, taken 5.0:1, overdue 6.5:1. The action is teal-600
-    rather than the brighter teal-500 because white on 500 lands at 3.8:1 — it
-    looked right and would have failed a contrast check.
+    Colour means something, or it is not used.
+    
+    The action is near-black rather than a brand hue: on white it is the
+    calmest thing that can still read as "press this", and it leaves green,
+    amber and red to do the only job colour has here — is this bed free, is it
+    taken, is this rent late. An accent colour of its own would compete with
+    the three signals the whole product turns on.
+
+    All checked against white at AA for body text: muted 4.9:1, free 5.0:1,
+    taken 5.0:1, overdue 6.5:1, action 17.8:1.
   */
   --ok: var(--color-moss-600);
   --accent-text: var(--color-brass-600);
   --danger-text: var(--color-rust-600);
-  --action: var(--color-teal-600);
-  --action-hover: var(--color-teal-700);
+  --action: var(--color-ink-900);
+  --action-hover: var(--color-ink-700);
   --on-action: #ffffff;
 
   --shadow-card: 0 1px 2px rgb(22 24 29 / 0.05), 0 1px 3px rgb(22 24 29 / 0.04);
